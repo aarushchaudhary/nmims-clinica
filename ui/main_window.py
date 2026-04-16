@@ -32,7 +32,10 @@ QWidget {
     font-family: 'Segoe UI', 'Arial', sans-serif;
     font-size: 13px;
     color: #1e293b;
-    background-color: #f1f5f9;
+}
+
+QLabel, QCheckBox, QRadioButton {
+    background-color: transparent;
 }
 
 /* ── Sidebar ── */
