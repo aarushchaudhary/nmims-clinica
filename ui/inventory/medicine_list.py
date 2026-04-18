@@ -201,6 +201,10 @@ class MedicineListWidget(QWidget):
         vb.addWidget(title)
         vb.addWidget(subtitle)
         
+        btn_misc = QPushButton("＋ Add Misc")
+        btn_misc.setObjectName("BtnSecondary")
+        btn_misc.clicked.connect(self._on_add_misc)
+
         btn_equip = QPushButton("＋ Equipment")
         btn_equip.setObjectName("BtnSecondary")
         btn_equip.clicked.connect(self._on_add_equipment)
@@ -211,6 +215,7 @@ class MedicineListWidget(QWidget):
         
         h.addLayout(vb)
         h.addStretch()
+        h.addWidget(btn_misc)
         h.addWidget(btn_equip)
         h.addWidget(btn_add)
         return w
@@ -528,6 +533,11 @@ class MedicineListWidget(QWidget):
 
     def _on_add_equipment(self):
         if EquipmentFormDialog(parent=self).exec():
+            self._refresh_all()
+            self.tabs.setCurrentIndex(4)
+
+    def _on_add_misc(self):
+        if EquipmentFormDialog(parent=self, default_category="Miscellaneous").exec():
             self._refresh_all()
             self.tabs.setCurrentIndex(4)
 

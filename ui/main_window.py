@@ -17,6 +17,7 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QFont, QIcon, QColor
 
 # ── Module pages ──────────────────────────────────────────────────────────────
+from ui.dashboard_page              import DashboardWidget
 from ui.patients.patient_list       import PatientListWidget
 from ui.inventory.medicine_list     import MedicineListWidget
 from ui.reports_page                import ReportsWidget
@@ -530,10 +531,11 @@ class MainWindow(QMainWindow):
 
         # Nav items
         nav_items = [
-            ("👤  Patients",    0),
-            ("🗓  Consultations", 1),
-            ("💊  Inventory",   2),
-            ("📊  Reports",     3),
+            ("🚨  Alerts",        0),
+            ("👤  Patients",      1),
+            ("🗓  Consultations",  2),
+            ("💊  Inventory",     3),
+            ("📊  Reports",       4),
         ]
         for label, idx in nav_items:
             btn = NavButton(label, idx)
@@ -565,10 +567,11 @@ class MainWindow(QMainWindow):
         layout.setSpacing(0)
 
         self.pages = QStackedWidget()
-        self.pages.addWidget(PatientListWidget(self))          # 0 — Patients
-        self.pages.addWidget(self._placeholder("Consultations", "🗓"))  # 1
-        self.pages.addWidget(MedicineListWidget(self))         # 2 — Inventory
-        self.pages.addWidget(ReportsWidget(self))              # 3 — Reports
+        self.pages.addWidget(DashboardWidget(self))            # 0 — Dashboard
+        self.pages.addWidget(PatientListWidget(self))          # 1 — Patients
+        self.pages.addWidget(self._placeholder("Consultations", "🗓"))  # 2
+        self.pages.addWidget(MedicineListWidget(self))         # 3 — Inventory
+        self.pages.addWidget(ReportsWidget(self))              # 4 — Reports
 
         layout.addWidget(self.pages)
         return content

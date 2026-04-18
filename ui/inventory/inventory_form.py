@@ -243,10 +243,11 @@ class MedicineFormDialog(QDialog):
 class EquipmentFormDialog(QDialog):
     """Add / Edit equipment or instrument."""
 
-    def __init__(self, equipment_id: int = None, parent=None):
+    def __init__(self, equipment_id: int = None, parent=None, default_category: str = None):
         super().__init__(parent)
         self.equipment_id = equipment_id
         self.is_edit      = equipment_id is not None
+        self.default_category = default_category
 
         self.setWindowTitle("Edit Equipment" if self.is_edit else "Add Equipment / Instrument")
         self.setMinimumWidth(460)
@@ -321,6 +322,11 @@ class EquipmentFormDialog(QDialog):
         h.addSpacing(8)
         h.addWidget(self.btn_save)
         root.addLayout(h)
+
+        if not self.is_edit and self.default_category:
+            idx = self.f_category.findText(self.default_category)
+            if idx >= 0:
+                self.f_category.setCurrentIndex(idx)
 
     def _populate(self):
         from database.inventory_queries import search_equipment

@@ -216,6 +216,33 @@ def get_last_visit(patient_id: int) -> Optional[dict]:
         conn.close()
 
 
+def get_followups_for_date(date_str: str) -> list[dict]:
+    """
+    Fetch expected follow-ups for a specific date (e.g. today).
+    Returns basic visit info + patient info.
+    """
+    sql = """
+        SELECT
+            v.id AS visit_id,
+            v.visit_date,
+            v.notes,
+            p.id AS patient_id,
+            p.name AS patient_name,
+            p.sap_id AS patient_sap_id,
+            dc.name AS category_name
+        FROM visits v
+        JOIN patients p ON p.id = v.patient_id
+        LEFT JOIN disease_categories dc ON dc.id = v.category_id
+        WHERE v.follow_up_date = ?
+        ORDER BY p.name COLLATE NOCASE
+    """
+    conn = get_connection()
+    try:
+         return _rows_to_list(conn.execute(sql, (date_str,)).fetchall())
+    finally:
+        conn.close()
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  READ — filtered visit list (system-wide)
 # ─────────────────────────────────────────────────────────────────────────────
