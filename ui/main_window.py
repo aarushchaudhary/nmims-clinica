@@ -100,7 +100,7 @@ QLabel, QCheckBox, QRadioButton {
 }
 
 /* ── Tables ── */
-QTableWidget {
+QTableView, QTableWidget {
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
@@ -109,11 +109,11 @@ QTableWidget {
     selection-color: #0f172a;
     alternate-background-color: #f8fafc;
 }
-QTableWidget::item {
+QTableView::item, QTableWidget::item {
     padding: 6px 8px;
     border-bottom: 1px solid #f1f5f9;
 }
-QTableWidget::item:selected {
+QTableView::item:selected, QTableWidget::item:selected {
     background-color: #e0f2fe;
     color: #0f172a;
 }
@@ -338,6 +338,42 @@ QCheckBox::indicator {
 QCheckBox::indicator:checked {
     background-color: #0d9488;
     border-color: #0d9488;
+}
+
+/* ── Calendar ── */
+QCalendarWidget QWidget#qt_calendar_navigationbar {
+    background-color: #f1f5f9;
+    border-bottom: 1px solid #cbd5e1;
+}
+QCalendarWidget QToolButton {
+    color: #1e293b;
+    background-color: transparent;
+    font-weight: bold;
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+QCalendarWidget QToolButton:hover {
+    background-color: #cbd5e1;
+}
+QCalendarWidget QMenu {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+}
+QCalendarWidget QSpinBox {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    min-height: 24px;
+}
+QCalendarWidget QAbstractItemView:enabled {
+    background-color: #ffffff;
+    color: #1e293b;
+    selection-background-color: #0d9488;
+    selection-color: #ffffff;
+}
+QCalendarWidget QAbstractItemView:disabled {
+    color: #94a3b8;
 }
 """
 

@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QGridLayout,
     QLabel, QLineEdit, QComboBox, QSpinBox, QCheckBox, QPushButton,
     QGroupBox, QTextEdit, QDialogButtonBox, QMessageBox,
-    QDateEdit, QFrame, QWidget, QSizePolicy
+    QDateEdit, QFrame, QWidget, QSizePolicy, QScrollArea
 )
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QFont
@@ -53,7 +53,14 @@ class ConsultationFormDialog(QDialog):
     # ── Build UI ────────────────────────────────────────────────────────────────
 
     def _build_ui(self):
-        root = QVBoxLayout(self)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # Content Widget for Scroll Area
+        scroll_content = QWidget()
+        scroll_content.setStyleSheet("background: transparent;")
+        root = QVBoxLayout(scroll_content)
         root.setContentsMargins(20, 20, 20, 20)
         root.setSpacing(14)
 
@@ -61,7 +68,18 @@ class ConsultationFormDialog(QDialog):
         root.addWidget(self._build_visit_meta_group())
         root.addWidget(self._build_clinical_group())
         root.addWidget(self._build_outcomes_group())
-        root.addWidget(self._build_buttons())
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("background: transparent; border: none;")
+        scroll.setWidget(scroll_content)
+        
+        main_layout.addWidget(scroll)
+
+        # Buttons at bottom
+        btn_container = self._build_buttons()
+        main_layout.addWidget(btn_container)
 
     def _build_patient_banner(self) -> QFrame:
         frame = QFrame()
@@ -121,11 +139,11 @@ class ConsultationFormDialog(QDialog):
 
         self.f_complaint = QTextEdit()
         self.f_complaint.setPlaceholderText("What does the patient present with?")
-        self.f_complaint.setFixedHeight(52)
+        self.f_complaint.setMinimumHeight(60)
 
         self.f_diagnosis = QTextEdit()
         self.f_diagnosis.setPlaceholderText("Clinical diagnosis")
-        self.f_diagnosis.setFixedHeight(52)
+        self.f_diagnosis.setMinimumHeight(60)
 
         # Category row: dropdown + Add button
         cat_row = QHBoxLayout()
@@ -139,15 +157,15 @@ class ConsultationFormDialog(QDialog):
 
         self.f_investigations = QTextEdit()
         self.f_investigations.setPlaceholderText("Lab tests, X-Ray, ECG, etc.")
-        self.f_investigations.setFixedHeight(52)
+        self.f_investigations.setMinimumHeight(60)
 
         self.f_treatment = QTextEdit()
         self.f_treatment.setPlaceholderText("Treatment given")
-        self.f_treatment.setFixedHeight(52)
+        self.f_treatment.setMinimumHeight(60)
 
         self.f_prescription = QTextEdit()
         self.f_prescription.setPlaceholderText("Medicines prescribed (free text)")
-        self.f_prescription.setFixedHeight(52)
+        self.f_prescription.setMinimumHeight(60)
 
         form.addRow(self._lbl("Chief Complaint"), self.f_complaint)
         form.addRow(self._lbl("Diagnosis"),       self.f_diagnosis)
@@ -205,7 +223,7 @@ class ConsultationFormDialog(QDialog):
         grid.addWidget(self._lbl("Notes"), 4, 0, Qt.AlignRight | Qt.AlignTop)
         self.f_notes = QTextEdit()
         self.f_notes.setPlaceholderText("Any additional notes…")
-        self.f_notes.setFixedHeight(52)
+        self.f_notes.setMinimumHeight(60)
         grid.addWidget(self.f_notes, 4, 1)
 
         return grp
@@ -213,7 +231,7 @@ class ConsultationFormDialog(QDialog):
     def _build_buttons(self) -> QWidget:
         w = QWidget()
         h = QHBoxLayout(w)
-        h.setContentsMargins(0, 0, 0, 0)
+        h.setContentsMargins(20, 10, 20, 20)
 
         btn_cancel = QPushButton("Cancel")
         btn_cancel.clicked.connect(self.reject)
