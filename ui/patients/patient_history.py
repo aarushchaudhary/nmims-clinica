@@ -207,6 +207,21 @@ class PatientHistoryWidget(QWidget):
         )
         hdr.addWidget(btn_back)
         hdr.addStretch()
+
+        self.btn_edit_consult = QPushButton("✏️  Edit Consultation")
+        self.btn_edit_consult.setObjectName("BtnWarning")
+        self.btn_edit_consult.setFixedHeight(36)
+        self.btn_edit_consult.setEnabled(False)
+        self.btn_edit_consult.clicked.connect(self._open_edit_consultation)
+
+        self.btn_new_consult = QPushButton("🩺  New Consultation")
+        self.btn_new_consult.setObjectName("BtnPrimary")
+        self.btn_new_consult.setFixedHeight(36)
+        self.btn_new_consult.clicked.connect(
+            lambda: self.consult_requested.emit(self.patient_id)
+        )
+        hdr.addWidget(self.btn_edit_consult)
+        hdr.addSpacing(8)
         hdr.addWidget(self.btn_new_consult)
         root.addLayout(hdr)
 
@@ -297,12 +312,31 @@ class PatientHistoryWidget(QWidget):
         row = self.table.currentRow()
         if row < 0 or row >= len(self._visits):
             self.detail_pane.clear()
+            self.btn_edit_consult.setEnabled(False)
             return
         # Match by ID to be safe
         visit_id = int(self.table.item(row, VCOL_ID).text())
         visit = next((v for v in self._visits if v["id"] == visit_id), None)
         if visit:
             self.detail_pane.show_visit(visit)
+            self.btn_edit_consult.setEnabled(True)
+
+    def _open_edit_consultation(self):
+        row = self.table.currentRow()
+        if row < 0:
+            return
+        visit_id = int(self.table.item(row, VCOL_ID).text())
+        visit = next((v for v in self._visits if v["id"] == visit_id), None)
+        if not visit:
+            return
+        from ui.consultations.consultation_form import ConsultationFormDialog
+        dlg = ConsultationFormDialog(
+            patient_id=self.patient_id,
+            visit_id=visit_id,
+            parent=self.window()
+        )
+        if dlg.exec():
+            self._load_visits()  # refresh table + detail pane
 
 
 # ─────────────────────────────────────────────────────────────────────────────

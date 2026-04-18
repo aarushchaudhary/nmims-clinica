@@ -20,7 +20,8 @@ from PySide6.QtGui import QFont
 
 from database.patient_queries import get_patient_by_id
 from database.visit_queries   import (
-    create_visit, get_all_categories, add_custom_category
+    create_visit, update_visit, get_visit_by_id,
+    get_all_categories, add_custom_category
 )
 
 
@@ -47,9 +48,14 @@ class ConsultationFormDialog(QDialog):
 
         self._patient    = get_patient_by_id(patient_id) or {}
         self._categories = []
+        self._visit      = {}
 
         self._build_ui()
         self._load_categories()
+
+        if self.is_edit:
+            self._visit = get_visit_by_id(visit_id) or {}
+            self._populate_for_edit()
 
     # ── Build UI ────────────────────────────────────────────────────────────────
 
@@ -237,7 +243,7 @@ class ConsultationFormDialog(QDialog):
         btn_cancel = QPushButton("Cancel")
         btn_cancel.clicked.connect(self.reject)
 
-        self.btn_save = QPushButton("💾  Save Consultation")
+        self.btn_save = QPushButton("✏️  Update Consultation" if self.is_edit else "💾  Save Consultation")
         self.btn_save.setObjectName("BtnPrimary")
         self.btn_save.setFixedHeight(40)
         self.btn_save.clicked.connect(self._on_save)
@@ -252,6 +258,57 @@ class ConsultationFormDialog(QDialog):
         lbl = QLabel(text)
         lbl.setObjectName("FieldLabel")
         return lbl
+
+    # ── Populate for edit ────────────────────────────────────────────────────────
+
+    def _populate_for_edit(self):
+        """Pre-fill all form fields from the existing visit record."""
+        v = self._visit
+
+        # Visit type
+        idx = self.f_visit_type.findText(v.get("visit_type", "Walk-in"))
+        if idx >= 0:
+            self.f_visit_type.setCurrentIndex(idx)
+
+        # Visit date
+        vdate = v.get("visit_date", "")
+        if vdate:
+            from PySide6.QtCore import QDate
+            qd = QDate.fromString(vdate[:10], "yyyy-MM-dd")
+            if qd.isValid():
+                self.f_visit_date.setDate(qd)
+
+        # Clinical fields
+        self.f_complaint.setPlainText(v.get("chief_complaint") or "")
+        self.f_diagnosis.setPlainText(v.get("diagnosis") or "")
+        self.f_investigations.setPlainText(v.get("investigations") or "")
+        self.f_treatment.setPlainText(v.get("treatment") or "")
+        self.f_prescription.setPlainText(v.get("prescription") or "")
+
+        # Category — must run after _load_categories()
+        cat_id = v.get("category_id")
+        if cat_id is not None:
+            cidx = self.f_category.findData(cat_id)
+            if cidx >= 0:
+                self.f_category.setCurrentIndex(cidx)
+
+        # Outcomes
+        self.f_referral.setText(v.get("referral") or "")
+        self.f_rest_days.setValue(int(v.get("rest_days") or 0))
+        self.chk_med_leave.setChecked(bool(v.get("medical_leave")))
+        self.chk_ambulance.setChecked(bool(v.get("ambulance_used")))
+
+        # Follow-up
+        fu = v.get("follow_up_date")
+        if fu:
+            from PySide6.QtCore import QDate
+            qfu = QDate.fromString(fu[:10], "yyyy-MM-dd")
+            if qfu.isValid():
+                self.chk_followup.setChecked(True)
+                self.f_followup_date.setDate(qfu)
+
+        # Notes
+        self.f_notes.setPlainText(v.get("notes") or "")
 
     # ── Categories ───────────────────────────────────────────────────────────────
 
@@ -307,24 +364,31 @@ class ConsultationFormDialog(QDialog):
 
         referral = self.f_referral.text().strip() or None
 
+        common_kwargs = dict(
+            visit_type       = self.f_visit_type.currentText(),
+            chief_complaint  = self.f_complaint.toPlainText().strip() or None,
+            diagnosis        = self.f_diagnosis.toPlainText().strip() or None,
+            category_id      = category_id,
+            investigations   = self.f_investigations.toPlainText().strip() or None,
+            treatment        = self.f_treatment.toPlainText().strip() or None,
+            prescription     = self.f_prescription.toPlainText().strip() or None,
+            referral         = referral,
+            rest_days        = self.f_rest_days.value(),
+            medical_leave    = self.chk_med_leave.isChecked(),
+            ambulance_used   = self.chk_ambulance.isChecked(),
+            follow_up_date   = follow_up,
+            notes            = self.f_notes.toPlainText().strip() or None,
+        )
+
         try:
-            create_visit(
-                patient_id       = self.patient_id,
-                visit_type       = self.f_visit_type.currentText(),
-                visit_date       = self.f_visit_date.date().toString("yyyy-MM-dd HH:mm:ss"),
-                chief_complaint  = self.f_complaint.toPlainText().strip() or None,
-                diagnosis        = self.f_diagnosis.toPlainText().strip() or None,
-                category_id      = category_id,
-                investigations   = self.f_investigations.toPlainText().strip() or None,
-                treatment        = self.f_treatment.toPlainText().strip() or None,
-                prescription     = self.f_prescription.toPlainText().strip() or None,
-                referral         = referral,
-                rest_days        = self.f_rest_days.value(),
-                medical_leave    = self.chk_med_leave.isChecked(),
-                ambulance_used   = self.chk_ambulance.isChecked(),
-                follow_up_date   = follow_up,
-                notes            = self.f_notes.toPlainText().strip() or None,
-            )
+            if self.is_edit:
+                update_visit(self.visit_id, **common_kwargs)
+            else:
+                create_visit(
+                    patient_id = self.patient_id,
+                    visit_date = self.f_visit_date.date().toString("yyyy-MM-dd HH:mm:ss"),
+                    **common_kwargs
+                )
             self.accept()
 
         except Exception as exc:

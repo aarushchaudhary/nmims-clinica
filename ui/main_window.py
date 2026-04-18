@@ -151,7 +151,38 @@ QLineEdit:disabled, QTextEdit:disabled, QComboBox:disabled {
 }
 QComboBox::drop-down {
     border: none;
-    width: 24px;
+    width: 28px;
+    subcontrol-origin: padding;
+    subcontrol-position: right center;
+}
+QComboBox::down-arrow {
+    image: none;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #64748b;
+}
+QComboBox:on {
+    border: 1.5px solid #0d9488;
+}
+QDateEdit::drop-down {
+    border: none;
+    width: 28px;
+    subcontrol-origin: padding;
+    subcontrol-position: right center;
+}
+QDateEdit::down-arrow {
+    image: none;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #64748b;
+}
+QDateEdit::up-button, QDateEdit::down-button,
+QSpinBox::up-button, QSpinBox::down-button {
+    width: 16px;
 }
 QComboBox QAbstractItemView, QComboBox QListView {
     background: #f1f5f9;
@@ -172,10 +203,7 @@ QComboBox QAbstractItemView::item:selected, QComboBox QListView::item:selected {
     background-color: #bae6fd;
     color: #0f172a;
 }
-QDateEdit::up-button, QDateEdit::down-button,
-QSpinBox::up-button, QSpinBox::down-button {
-    width: 16px;
-}
+
 
 /* ── Buttons ── */
 QPushButton {
