@@ -12,11 +12,11 @@ Features:
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QComboBox, QTableView,
-    QHeaderView, QAbstractItemView, QMessageBox, QFrame,
+    QLineEdit, QTableView,
     QHeaderView, QAbstractItemView, QMessageBox, QFrame,
     QSizePolicy, QSpacerItem
 )
+from ui.widgets import StyledComboBox
 from PySide6.QtCore import Qt, QTimer, Signal, QAbstractTableModel, QModelIndex
 from PySide6.QtGui import QColor, QFont
 
@@ -181,17 +181,17 @@ class PatientListWidget(QWidget):
         self.search_box.returnPressed.connect(self._on_search_enter)
 
         # Type filter
-        self.filter_type = QComboBox()
+        self.filter_type = StyledComboBox()
         self.filter_type.addItems(["All Types", "Student", "Staff"])
         self.filter_type.currentIndexChanged.connect(self._on_filter_changed)
 
         # School filter
-        self.filter_school = QComboBox()
+        self.filter_school = StyledComboBox()
         self.filter_school.addItem("All Schools")
         self.filter_school.currentIndexChanged.connect(self._on_filter_changed)
 
         # Gender filter
-        self.filter_gender = QComboBox()
+        self.filter_gender = StyledComboBox()
         self.filter_gender.addItems(["All Genders", "Male", "Female", "Other"])
         self.filter_gender.currentIndexChanged.connect(self._on_filter_changed)
 

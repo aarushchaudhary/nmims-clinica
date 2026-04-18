@@ -9,10 +9,11 @@ Add / Edit patient dialog.
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QLabel, QLineEdit, QComboBox, QSpinBox, QPushButton,
+    QLabel, QLineEdit, QSpinBox, QPushButton,
     QGroupBox, QTextEdit, QDialogButtonBox, QMessageBox,
     QFrame, QWidget, QDateEdit
 )
+from ui.widgets import StyledComboBox
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QFont
 
@@ -75,10 +76,10 @@ class PatientFormDialog(QDialog):
         self.f_name.setPlaceholderText("Full name")
         self.f_name.setMaxLength(100)
 
-        self.f_type = QComboBox()
+        self.f_type = StyledComboBox()
         self.f_type.addItems(["Student", "Staff"])
 
-        self.f_school = QComboBox()
+        self.f_school = StyledComboBox()
         self.f_school.addItems(["— Select —"] + sorted(VALID_SCHOOLS))
 
         id_form.addRow(self._lbl("SAP ID *"),  self.f_sap_id)
@@ -99,10 +100,10 @@ class PatientFormDialog(QDialog):
         self.f_dob.setDate(QDate(2000, 1, 1))
         self.f_dob.setDisplayFormat("dd MMM yyyy")
 
-        self.f_gender = QComboBox()
+        self.f_gender = StyledComboBox()
         self.f_gender.addItems(["— Select —", "Male", "Female", "Other"])
 
-        self.f_blood_group = QComboBox()
+        self.f_blood_group = StyledComboBox()
         self.f_blood_group.addItems([
             "— Unknown —", "A+", "A−", "B+", "B−",
             "AB+", "AB−", "O+", "O−"

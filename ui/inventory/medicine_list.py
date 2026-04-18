@@ -8,9 +8,10 @@ Memory mapped for low resource usage.
 from datetime import date
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QComboBox, QTableView, QHeaderView, QAbstractItemView,
+    QLineEdit, QTableView, QHeaderView, QAbstractItemView,
     QMessageBox, QFrame, QTabWidget, QSizePolicy
 )
+from ui.widgets import StyledComboBox
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex
 from PySide6.QtGui import QColor, QFont, QBrush
 
@@ -267,7 +268,7 @@ class MedicineListWidget(QWidget):
             self._search_all.setPlaceholderText("🔍 Search medicines...")
             self._search_all.returnPressed.connect(lambda: self._on_filter_changed(mode))
             
-            self._subtype_filter = QComboBox()
+            self._subtype_filter = StyledComboBox()
             self._subtype_filter.addItem("All Subtypes")
             self._subtype_filter.currentIndexChanged.connect(lambda: self._on_filter_changed(mode))
             
@@ -310,11 +311,11 @@ class MedicineListWidget(QWidget):
         self.eq_search.setPlaceholderText("🔍 Search equipment...")
         self.eq_search.returnPressed.connect(lambda: self._on_filter_changed("equipment"))
         
-        self.cat_filter = QComboBox()
+        self.cat_filter = StyledComboBox()
         self.cat_filter.addItems(["All Categories", "Instrument", "Equipment", "Miscellaneous"])
         self.cat_filter.currentIndexChanged.connect(lambda: self._on_filter_changed("equipment"))
         
-        self.disposal_filter = QComboBox()
+        self.disposal_filter = StyledComboBox()
         self.disposal_filter.addItems(["All", "Needs Disposal", "No Disposal"])
         self.disposal_filter.currentIndexChanged.connect(lambda: self._on_filter_changed("equipment"))
 

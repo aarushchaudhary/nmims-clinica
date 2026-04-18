@@ -9,10 +9,11 @@ Three dialogs:
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QGridLayout,
-    QLabel, QLineEdit, QComboBox, QSpinBox, QPushButton,
+    QLabel, QLineEdit, QSpinBox, QPushButton,
     QGroupBox, QTextEdit, QDialogButtonBox, QMessageBox,
     QDateEdit, QCheckBox, QFrame, QWidget, QSizePolicy
 )
+from ui.widgets import StyledComboBox
 from PySide6.QtCore import Qt, QDate
 
 from database.inventory_queries import (
@@ -75,7 +76,7 @@ class MedicineFormDialog(QDialog):
         self.f_name.setPlaceholderText("Medicine name")
         self.f_name.setMaxLength(100)
 
-        self.f_subtype = QComboBox()
+        self.f_subtype = StyledComboBox()
 
         self.f_batch = QLineEdit()
         self.f_batch.setPlaceholderText("Batch / lot number")
@@ -274,7 +275,7 @@ class EquipmentFormDialog(QDialog):
         self.f_name.setPlaceholderText("Equipment / instrument name")
         self.f_name.setMaxLength(100)
 
-        self.f_category = QComboBox()
+        self.f_category = StyledComboBox()
         self.f_category.addItems(["Instrument", "Equipment", "Miscellaneous"])
 
         self.f_qty = QSpinBox()

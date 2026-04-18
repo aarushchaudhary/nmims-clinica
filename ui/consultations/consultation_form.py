@@ -10,10 +10,11 @@ Dialog for recording a new consultation / visit.
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QGridLayout,
-    QLabel, QLineEdit, QComboBox, QSpinBox, QCheckBox, QPushButton,
+    QLabel, QLineEdit, QSpinBox, QCheckBox, QPushButton,
     QGroupBox, QTextEdit, QDialogButtonBox, QMessageBox,
     QDateEdit, QFrame, QWidget, QSizePolicy, QScrollArea
 )
+from ui.widgets import StyledComboBox
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QFont
 
@@ -115,10 +116,10 @@ class ConsultationFormDialog(QDialog):
         form.setLabelAlignment(Qt.AlignRight)
         form.setSpacing(10)
 
-        self.f_visit_type = QComboBox()
+        self.f_visit_type = StyledComboBox()
         self.f_visit_type.addItems(VISIT_TYPES)
 
-        self.f_diagnosed_by = QComboBox()
+        self.f_diagnosed_by = StyledComboBox()
         self.f_diagnosed_by.addItems(["Doctor", "Nurse"])
 
         self.f_visit_date = QDateEdit()
@@ -147,7 +148,7 @@ class ConsultationFormDialog(QDialog):
 
         # Category row: dropdown + Add button
         cat_row = QHBoxLayout()
-        self.f_category = QComboBox()
+        self.f_category = StyledComboBox()
         self.f_category.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         btn_add_cat = QPushButton("＋ Add Category")
         btn_add_cat.setFixedWidth(130)
@@ -310,7 +311,6 @@ class ConsultationFormDialog(QDialog):
             create_visit(
                 patient_id       = self.patient_id,
                 visit_type       = self.f_visit_type.currentText(),
-                diagnosed_by     = self.f_diagnosed_by.currentText(),
                 visit_date       = self.f_visit_date.date().toString("yyyy-MM-dd HH:mm:ss"),
                 chief_complaint  = self.f_complaint.toPlainText().strip() or None,
                 diagnosis        = self.f_diagnosis.toPlainText().strip() or None,
