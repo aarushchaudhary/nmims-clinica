@@ -6,8 +6,9 @@ Dedicated screen for triggering threaded Excel exports.
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QProgressBar, QFrame, QMessageBox, QFileDialog
+    QProgressBar, QFrame, QMessageBox, QFileDialog, QLineEdit
 )
+import os
 from PySide6.QtCore import Qt
 
 class ReportsWidget(QWidget):
@@ -35,22 +36,46 @@ class ReportsWidget(QWidget):
         desc.setObjectName("PageSubtitle")
         cv.addWidget(desc)
 
+        # Directory selection
+        dir_h = QHBoxLayout()
+        dir_lbl = QLabel("Export Directory:")
+        dir_lbl.setStyleSheet("font-weight: bold; color: #1e293b;")
+        
+        self.dir_input = QLineEdit()
+        default_dir = os.path.join(os.path.expanduser("~"), "Documents", "ClinicExports")
+        self.dir_input.setText(default_dir)
+        self.dir_input.setReadOnly(True)
+        
+        btn_browse = QPushButton("Browse...")
+        btn_browse.clicked.connect(self._browse_dir)
+        
+        dir_h.addWidget(dir_lbl)
+        dir_h.addWidget(self.dir_input)
+        dir_h.addWidget(btn_browse)
+        cv.addLayout(dir_h)
+        
+        cv.addSpacing(10)
+
         # Buttons
         h = QHBoxLayout()
-        self.btn_pat = QPushButton("Export All Patients")
-        self.btn_pat.setObjectName("BtnPrimary")
+        self.btn_pat = QPushButton("Export Patients")
         self.btn_pat.clicked.connect(self._export_patients)
         
         self.btn_inv = QPushButton("Export Inventory")
-        self.btn_inv.setEnabled(False) # Placeholder until backend added
+        self.btn_inv.clicked.connect(self._export_inventory)
         
         self.btn_vis = QPushButton("Export Visits")
-        self.btn_vis.setEnabled(False) # Placeholder until backend added
+        self.btn_vis.clicked.connect(self._export_visits)
+
+        self.btn_all = QPushButton("⭐ Export All Data")
+        self.btn_all.setObjectName("BtnPrimary")
+        self.btn_all.clicked.connect(self._export_all)
 
         h.addWidget(self.btn_pat)
         h.addWidget(self.btn_inv)
         h.addWidget(self.btn_vis)
         h.addStretch()
+        h.addWidget(self.btn_all)
         cv.addLayout(h)
 
         self.progress_bar = QProgressBar()
@@ -68,26 +93,46 @@ class ReportsWidget(QWidget):
 
     def _set_ui_blocked(self, blocked: bool):
         self.btn_pat.setEnabled(not blocked)
+        self.btn_inv.setEnabled(not blocked)
+        self.btn_vis.setEnabled(not blocked)
+        self.btn_all.setEnabled(not blocked)
         self.progress_bar.setVisible(blocked)
         self.progress_lbl.setVisible(blocked)
         if blocked:
             self.progress_bar.setValue(0)
             self.progress_lbl.setText("Starting export...")
 
-    def _export_patients(self):
-        dir_path = QFileDialog.getExistingDirectory(self, "Select Export Directory")
-        if not dir_path: return
+    def _browse_dir(self):
+        dir_path = QFileDialog.getExistingDirectory(self, "Select Export Directory", self.dir_input.text())
+        if dir_path:
+            self.dir_input.setText(dir_path)
 
+    def _start_export_thread(self, thread_obj):
         self._set_ui_blocked(True)
         try:
-            from exports.excel_exporter_threaded import ExportPatientsThread, ExportVisitsThread, ExportInventoryThread, ExportVisitsThread, ExportInventoryThread
-            self._thread = ExportPatientsThread(export_dir=dir_path)
+            self._thread = thread_obj
             self._thread.progress.connect(self._on_progress)
             self._thread.error.connect(self._on_error)
             self._thread.finished.connect(self._on_finished)
             self._thread.start()
         except Exception as e:
             self._on_error(str(e))
+
+    def _export_patients(self):
+        from exports.excel_exporter_threaded import ExportPatientsThread
+        self._start_export_thread(ExportPatientsThread(export_dir=self.dir_input.text()))
+
+    def _export_visits(self):
+        from exports.excel_exporter_threaded import ExportVisitsThread
+        self._start_export_thread(ExportVisitsThread(export_dir=self.dir_input.text()))
+
+    def _export_inventory(self):
+        from exports.excel_exporter_threaded import ExportInventoryThread
+        self._start_export_thread(ExportInventoryThread(export_dir=self.dir_input.text()))
+
+    def _export_all(self):
+        from exports.excel_exporter_threaded import ExportAllDataThread
+        self._start_export_thread(ExportAllDataThread(export_dir=self.dir_input.text()))
 
     def _on_progress(self, val: int, msg: str):
         self.progress_bar.setValue(val)
@@ -106,13 +151,3 @@ class ReportsWidget(QWidget):
         if self._thread:
             self._thread.deleteLater()
             self._thread = None
-
-    def _export_visits(self):
-        dir_path = QFileDialog.getExistingDirectory(self, 'Select Export Directory')
-        if dir_path:
-            self._start_export(ExportVisitsThread(export_dir=dir_path))
-
-    def _export_inventory(self):
-        dir_path = QFileDialog.getExistingDirectory(self, 'Select Export Directory')
-        if dir_path:
-            self._start_export(ExportInventoryThread(export_dir=dir_path))
