@@ -186,23 +186,23 @@ QSpinBox::up-button, QSpinBox::down-button {
     width: 16px;
 }
 QComboBox QAbstractItemView, QComboBox QListView {
-    background: #f1f5f9;
-    background-color: #f1f5f9;
-    color: #ffffff;
+    background: #ffffff;
+    background-color: #ffffff;
+    color: #1e293b;
     border: 1px solid #cbd5e1;
     border-radius: 4px;
-    selection-background-color: #bae6fd;
-    selection-color: #0f172a;
+    selection-background-color: #0d9488;
+    selection-color: #ffffff;
     outline: none;
 }
 QComboBox QAbstractItemView::item, QComboBox QListView::item {
     min-height: 28px;
     padding: 4px 8px;
-    color: #ffffff;
+    color: #1e293b;
 }
 QComboBox QAbstractItemView::item:selected, QComboBox QListView::item:selected {
-    background-color: #bae6fd;
-    color: #0f172a;
+    background-color: #0d9488;
+    color: #ffffff;
 }
 
 

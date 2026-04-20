@@ -124,14 +124,23 @@ class ConsultationFormDialog(QDialog):
 
         self.f_visit_type = StyledComboBox()
         self.f_visit_type.addItems(VISIT_TYPES)
+        self.f_visit_type.setStyleSheet(
+            "QComboBox { background-color: #ffffff; color: #1e293b; }"
+        )
 
         self.f_diagnosed_by = StyledComboBox()
         self.f_diagnosed_by.addItems(["Doctor", "Nurse"])
+        self.f_diagnosed_by.setStyleSheet(
+            "QComboBox { background-color: #ffffff; color: #1e293b; }"
+        )
 
         self.f_visit_date = QDateEdit()
         self.f_visit_date.setCalendarPopup(True)
         self.f_visit_date.setDate(QDate.currentDate())
         self.f_visit_date.setDisplayFormat("dd MMM yyyy")
+        self.f_visit_date.setStyleSheet(
+            "QDateEdit { background-color: #ffffff; color: #1e293b; }"
+        )
 
         form.addRow(self._lbl("Visit Type *"), self.f_visit_type)
         form.addRow(self._lbl("Diagnosed By *"), self.f_diagnosed_by)
@@ -156,6 +165,9 @@ class ConsultationFormDialog(QDialog):
         cat_row = QHBoxLayout()
         self.f_category = StyledComboBox()
         self.f_category.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.f_category.setStyleSheet(
+            "QComboBox { background-color: #ffffff; color: #1e293b; }"
+        )
         btn_add_cat = QPushButton("＋ Add Category")
         btn_add_cat.setFixedWidth(130)
         btn_add_cat.clicked.connect(self._on_add_category)
@@ -209,6 +221,9 @@ class ConsultationFormDialog(QDialog):
         self.f_followup_date.setDate(QDate.currentDate().addDays(7))
         self.f_followup_date.setDisplayFormat("dd MMM yyyy")
         self.f_followup_date.setEnabled(False)
+        self.f_followup_date.setStyleSheet(
+            "QDateEdit { background-color: #ffffff; color: #1e293b; }"
+        )
         self.chk_followup.toggled.connect(self.f_followup_date.setEnabled)
         fu_row.addWidget(self.chk_followup)
         fu_row.addWidget(self.f_followup_date)
