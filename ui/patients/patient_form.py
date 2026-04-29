@@ -132,13 +132,13 @@ class PatientFormDialog(QDialog):
         btn_box = QDialogButtonBox()
         self.btn_save   = btn_box.addButton(
             "Save Patient" if not self.is_edit else "Update Patient",
-            QDialogButtonBox.AcceptRole
+            QDialogButtonBox.ActionRole
         )
         self.btn_cancel = btn_box.addButton("Cancel", QDialogButtonBox.RejectRole)
         self.btn_save.setObjectName("BtnPrimary")
         self.btn_save.setFixedHeight(38)
 
-        btn_box.accepted.connect(self._on_save)
+        self.btn_save.clicked.connect(self._on_save)
         btn_box.rejected.connect(self.reject)
         root.addWidget(btn_box)
 
@@ -255,3 +255,6 @@ class PatientFormDialog(QDialog):
                 self, "Save Error",
                 f"Could not save patient:\n{exc}"
             )
+            return
+
+        self.accept()
