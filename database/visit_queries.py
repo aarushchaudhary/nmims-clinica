@@ -290,11 +290,11 @@ def search_visits(
         params.append(visit_type)
 
     if date_from:
-        conditions.append("DATE(v.visit_date) >= ?")
+        conditions.append("SUBSTR(v.visit_date, 1, 10) >= ?")
         params.append(date_from)
 
     if date_to:
-        conditions.append("DATE(v.visit_date) <= ?")
+        conditions.append("SUBSTR(v.visit_date, 1, 10) <= ?")
         params.append(date_to)
 
     if has_referral is not None:
@@ -424,10 +424,10 @@ def get_visit_stats(date_from: str = None, date_to: str = None) -> dict:
     conditions = []
     params = []
     if date_from:
-        conditions.append("DATE(visit_date) >= ?")
+        conditions.append("SUBSTR(visit_date, 1, 10) >= ?")
         params.append(date_from)
     if date_to:
-        conditions.append("DATE(visit_date) <= ?")
+        conditions.append("SUBSTR(visit_date, 1, 10) <= ?")
         params.append(date_to)
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
@@ -460,10 +460,10 @@ def get_disease_distribution(date_from: str = None, date_to: str = None) -> list
     conditions = []
     params = []
     if date_from:
-        conditions.append("DATE(v.visit_date) >= ?")
+        conditions.append("SUBSTR(v.visit_date, 1, 10) >= ?")
         params.append(date_from)
     if date_to:
-        conditions.append("DATE(v.visit_date) <= ?")
+        conditions.append("SUBSTR(v.visit_date, 1, 10) <= ?")
         params.append(date_to)
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
@@ -492,10 +492,10 @@ def get_visits_for_export(date_from: str = None, date_to: str = None) -> list[di
     conditions = []
     params = []
     if date_from:
-        conditions.append("DATE(v.visit_date) >= ?")
+        conditions.append("SUBSTR(v.visit_date, 1, 10) >= ?")
         params.append(date_from)
     if date_to:
-        conditions.append("DATE(v.visit_date) <= ?")
+        conditions.append("SUBSTR(v.visit_date, 1, 10) <= ?")
         params.append(date_to)
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""

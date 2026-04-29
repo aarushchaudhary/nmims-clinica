@@ -399,9 +399,13 @@ class ConsultationFormDialog(QDialog):
             if self.is_edit:
                 update_visit(self.visit_id, **common_kwargs)
             else:
+                from datetime import datetime
+                chosen_date = self.f_visit_date.date().toString("yyyy-MM-dd")
+                now_time = datetime.now().strftime("%H:%M:%S")
+                visit_datetime = f"{chosen_date} {now_time}"
                 create_visit(
                     patient_id = self.patient_id,
-                    visit_date = self.f_visit_date.date().toString("yyyy-MM-dd HH:mm:ss"),
+                    visit_date = visit_datetime,
                     **common_kwargs
                 )
             self.accept()

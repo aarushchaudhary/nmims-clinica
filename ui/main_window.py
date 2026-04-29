@@ -19,6 +19,7 @@ from PySide6.QtGui import QFont, QIcon, QColor
 # ── Module pages ──────────────────────────────────────────────────────────────
 from ui.dashboard_page              import DashboardWidget
 from ui.patients.patient_list       import PatientListWidget
+from ui.consultations.consultation_list import ConsultationListWidget
 from ui.inventory.medicine_list     import MedicineListWidget
 from ui.reports_page                import ReportsWidget
 
@@ -569,7 +570,7 @@ class MainWindow(QMainWindow):
         self.pages = QStackedWidget()
         self.pages.addWidget(DashboardWidget(self))            # 0 — Dashboard
         self.pages.addWidget(PatientListWidget(self))          # 1 — Patients
-        self.pages.addWidget(self._placeholder("Consultations", "🗓"))  # 2
+        self.pages.addWidget(ConsultationListWidget(self))     # 2 — Consultations
         self.pages.addWidget(MedicineListWidget(self))         # 3 — Inventory
         self.pages.addWidget(ReportsWidget(self))              # 4 — Reports
 

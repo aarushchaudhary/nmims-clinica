@@ -45,6 +45,20 @@ VISIT_TYPE_COLORS = {
 }
 
 
+def _fmt_visit_date(raw: str) -> str:
+    """Format 'YYYY-MM-DD HH:MM:SS' → '29 Apr 2026  14:32'."""
+    if not raw:
+        return "—"
+    from datetime import datetime
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+        try:
+            dt = datetime.strptime(raw[:19], fmt)
+            return dt.strftime("%d %b %Y  %H:%M")
+        except ValueError:
+            continue
+    # Fallback: just return the date part
+    return raw[:10]
+
 class PatientInfoCard(QFrame):
     """Top card showing patient profile summary."""
 
@@ -286,7 +300,7 @@ class PatientHistoryWidget(QWidget):
 
             cells = [
                 str(v.get("id", "")),
-                (v.get("visit_date") or "")[:16],
+                _fmt_visit_date(v.get("visit_date") or ""),
                 vtype,
                 v.get("category_name") or "—",
                 v.get("diagnosis") or "—",
