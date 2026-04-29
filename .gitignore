@@ -39,3 +39,6 @@ exports/__pycache__/
 # Builds
 dist/
 build/
+
+# PyInstaller spec files
+nmims clinica.spec
