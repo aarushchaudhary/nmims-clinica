@@ -35,3 +35,7 @@ env/
 # Application Specific
 clinic.db
 exports/__pycache__/
+
+# Builds
+dist/
+build/
