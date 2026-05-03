@@ -63,6 +63,8 @@ def add_medicine(
     expiry_date: str,              # Required — 'YYYY-MM-DD'
     subtype_id: int = None,
     batch_number: str = None,
+    dosage: str = None,
+    strength_mg: int = None,
     stock_received: int = 0,
     mfg_date: str = None,          # 'YYYY-MM-DD'
     minimum_stock_alert: int = 10,
@@ -76,16 +78,16 @@ def add_medicine(
     """
     sql = """
         INSERT INTO medicines (
-            name, subtype_id, batch_number,
+            name, subtype_id, batch_number, dosage, strength_mg,
             stock_received, current_stock, minimum_stock_alert,
             mfg_date, expiry_date,
             supplier, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
     conn = get_connection()
     try:
         cursor = conn.execute(sql, (
-            name.strip(), subtype_id, batch_number,
+            name.strip(), subtype_id, batch_number, dosage, strength_mg,
             stock_received, stock_received, minimum_stock_alert,
             mfg_date, expiry_date,
             supplier, notes
@@ -222,6 +224,8 @@ def update_medicine(
     name: str = None,
     subtype_id: int = None,
     batch_number: str = None,
+    dosage: str = None,
+    strength_mg: int = None,
     stock_received: int = None,
     current_stock: int = None,
     minimum_stock_alert: int = None,
@@ -235,6 +239,8 @@ def update_medicine(
     if name                 is not None: fields["name"]                 = name.strip()
     if subtype_id           is not None: fields["subtype_id"]           = subtype_id
     if batch_number         is not None: fields["batch_number"]         = batch_number
+    if dosage               is not None: fields["dosage"]               = dosage
+    if strength_mg          is not None: fields["strength_mg"]          = strength_mg
     if stock_received       is not None: fields["stock_received"]       = stock_received
     if current_stock        is not None: fields["current_stock"]        = current_stock
     if minimum_stock_alert  is not None: fields["minimum_stock_alert"]  = minimum_stock_alert

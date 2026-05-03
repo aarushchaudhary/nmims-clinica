@@ -82,12 +82,20 @@ class MedicineFormDialog(QDialog):
         self.f_batch.setPlaceholderText("Batch / lot number")
         self.f_batch.setMaxLength(40)
 
+        from PySide6.QtWidgets import QSpinBox
+
+        self.f_strength = QSpinBox()
+        self.f_strength.setRange(0, 1000000)
+        self.f_strength.setSuffix(" mg")
+        self.f_strength.setToolTip("Strength in milligrams (enter 0 if not applicable)")
+
         self.f_supplier = QLineEdit()
         self.f_supplier.setPlaceholderText("Supplier / manufacturer")
         self.f_supplier.setMaxLength(80)
 
         form.addRow(_lbl("Name *"),    self.f_name)
         form.addRow(_lbl("Subtype"),   self.f_subtype)
+        form.addRow(_lbl("Strength (mg)"),    self.f_strength)
         form.addRow(_lbl("Batch No."), self.f_batch)
         form.addRow(_lbl("Supplier"),  self.f_supplier)
         root.addWidget(basic)
@@ -178,6 +186,15 @@ class MedicineFormDialog(QDialog):
             self.f_subtype.setCurrentIndex(max(0, idx))
 
         self.f_batch.setText(m.get("batch_number") or "")
+        # strength_mg stored as integer in DB; show 0 as empty
+        val = m.get("strength_mg")
+        if val is None:
+            self.f_strength.setValue(0)
+        else:
+            try:
+                self.f_strength.setValue(int(val))
+            except Exception:
+                self.f_strength.setValue(0)
         self.f_supplier.setText(m.get("supplier") or "")
         self.f_stock_received.setValue(m.get("stock_received", 0))
         self.f_min_alert.setValue(m.get("minimum_stock_alert", 10))
@@ -211,6 +228,8 @@ class MedicineFormDialog(QDialog):
                 kwargs = dict(
                     name=name, subtype_id=sid,
                     batch_number=self.f_batch.text().strip() or None,
+                    dosage=None,
+                    strength_mg=(self.f_strength.value() or None),
                     stock_received=self.f_stock_received.value(),
                     current_stock=self.f_current_stock.value(),
                     minimum_stock_alert=self.f_min_alert.value(),
@@ -224,6 +243,8 @@ class MedicineFormDialog(QDialog):
                     name=name, expiry_date=expiry,
                     subtype_id=sid,
                     batch_number=self.f_batch.text().strip() or None,
+                    dosage=None,
+                    strength_mg=(self.f_strength.value() or None),
                     stock_received=self.f_stock_received.value(),
                     mfg_date=mfg,
                     minimum_stock_alert=self.f_min_alert.value(),
@@ -379,11 +400,15 @@ class EquipmentFormDialog(QDialog):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class DispenseDialog(QDialog):
-    """Dispense a medicine. Optionally link to a visit."""
+    """Dispense a medicine. Optionally link to a visit.
 
-    def __init__(self, medicine_id: int, parent=None):
+    New: accept optional `visit_id` so dispenses can be linked to a visit record.
+    """
+
+    def __init__(self, medicine_id: int, parent=None, visit_id: int = None):
         super().__init__(parent)
         self.medicine_id = medicine_id
+        self.visit_id    = visit_id
         self._medicine   = get_medicine_by_id(medicine_id) or {}
 
         self.setWindowTitle("Dispense Medicine")
@@ -509,6 +534,7 @@ class DispenseDialog(QDialog):
             dispense_medicine(
                 medicine_id    = self.medicine_id,
                 quantity       = qty,
+                visit_id       = self.visit_id,
                 dispensed_by   = self.f_dispensed_by.text().strip() or None,
                 notes          = self.f_notes.text().strip() or None,
                 is_post_expiry = is_expired,

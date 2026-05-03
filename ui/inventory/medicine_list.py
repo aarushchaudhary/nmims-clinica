@@ -25,7 +25,7 @@ from ui.inventory.inventory_form import MedicineFormDialog, EquipmentFormDialog
 
 # ── Column definitions ────────────────────────────────────────────────────────
 
-MED_COLS    = ["ID", "Name", "Subtype", "Batch", "Received",
+MED_COLS    = ["ID", "Name", "Subtype", "Dosage", "Batch", "Received",
                "Current Stock", "Min Alert", "Mfg Date", "Expiry Date", "Post-Expiry Dispensed"]
 EQUIP_COLS  = ["ID", "Name", "Category", "Qty", "Disposal Required",
                "Purchase Date", "Last Serviced"]
@@ -33,13 +33,14 @@ EQUIP_COLS  = ["ID", "Name", "Category", "Qty", "Disposal Required",
 MCOL_ID            = 0
 MCOL_NAME          = 1
 MCOL_SUBTYPE       = 2
-MCOL_BATCH         = 3
-MCOL_RECEIVED      = 4
-MCOL_CURRENT       = 5
-MCOL_MIN_ALERT     = 6
-MCOL_MFG_DATE      = 7
-MCOL_EXPIRY        = 8
-MCOL_POST_EXPIRY   = 9
+MCOL_BATCH         = 4
+MCOL_RECEIVED      = 5
+MCOL_CURRENT       = 6
+MCOL_MIN_ALERT     = 7
+MCOL_MFG_DATE      = 8
+MCOL_EXPIRY        = 9
+MCOL_POST_EXPIRY   = 10
+MCOL_DOSAGE        = 3
 
 ECOL_ID       = 0
 ECOL_NAME     = 1
@@ -86,6 +87,9 @@ class MedicineTableModel(QAbstractTableModel):
         if col == MCOL_ID: val = row.get("id", "")
         elif col == MCOL_NAME: val = row.get("name", "")
         elif col == MCOL_SUBTYPE: val = row.get("subtype_name") or "—"
+        elif col == MCOL_DOSAGE:
+            sm = row.get("strength_mg")
+            val = (f"{sm} mg" if sm is not None and sm != 0 else "—")
         elif col == MCOL_BATCH: val = row.get("batch_number") or "—"
         elif col == MCOL_RECEIVED: val = row.get("stock_received", 0)
         elif col == MCOL_CURRENT: val = row.get("current_stock", 0)
@@ -294,8 +298,8 @@ class MedicineListWidget(QWidget):
         
         hdr = table.horizontalHeader()
         hdr.setSectionResizeMode(MCOL_NAME, QHeaderView.Stretch)
-        for col in (MCOL_SUBTYPE, MCOL_BATCH, MCOL_RECEIVED, MCOL_CURRENT,
-                    MCOL_MIN_ALERT, MCOL_MFG_DATE, MCOL_EXPIRY, MCOL_POST_EXPIRY):
+        for col in (MCOL_SUBTYPE, MCOL_DOSAGE, MCOL_BATCH, MCOL_RECEIVED, MCOL_CURRENT,
+                MCOL_MIN_ALERT, MCOL_MFG_DATE, MCOL_EXPIRY, MCOL_POST_EXPIRY):
             hdr.setSectionResizeMode(col, QHeaderView.ResizeToContents)
 
         self._models[mode] = model

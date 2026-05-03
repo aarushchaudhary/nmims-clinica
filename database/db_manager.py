@@ -125,6 +125,8 @@ CREATE TABLE IF NOT EXISTS medicines (
     name                    TEXT    NOT NULL,
     subtype_id              INTEGER REFERENCES medicine_subtypes(id),
     batch_number            TEXT,
+    dosage                  TEXT,
+    strength_mg             INTEGER,
 
     -- Stock lifecycle
     stock_received          INTEGER NOT NULL DEFAULT 0 CHECK(stock_received >= 0),
@@ -277,7 +279,8 @@ def _seed_defaults(conn: sqlite3.Connection):
 # is not yet recorded in schema_version.
 
 MIGRATIONS = [
-    # (1, "ALTER TABLE patients ADD COLUMN email TEXT;"),
+    (1, "ALTER TABLE medicines ADD COLUMN dosage TEXT;"),
+    (2, "ALTER TABLE medicines ADD COLUMN strength_mg INTEGER;"),
 ]
 
 

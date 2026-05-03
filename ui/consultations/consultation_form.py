@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QGridLayout,
     QLabel, QLineEdit, QSpinBox, QCheckBox, QPushButton,
     QGroupBox, QTextEdit, QDialogButtonBox, QMessageBox,
+    QInputDialog,
     QDateEdit, QFrame, QWidget, QSizePolicy, QScrollArea
 )
 from ui.widgets import StyledComboBox
@@ -403,11 +404,32 @@ class ConsultationFormDialog(QDialog):
                 chosen_date = self.f_visit_date.date().toString("yyyy-MM-dd")
                 now_time = datetime.now().strftime("%H:%M:%S")
                 visit_datetime = f"{chosen_date} {now_time}"
-                create_visit(
+                visit_id = create_visit(
                     patient_id = self.patient_id,
                     visit_date = visit_datetime,
                     **common_kwargs
                 )
+                # If a prescription was entered, offer to record dispenses linked to this visit.
+                if common_kwargs.get("prescription"):
+                    resp = QMessageBox.question(
+                        self, "Dispense Medicines",
+                        "Prescription present. Do you want to dispense medicines now and link to this visit?",
+                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+                    )
+                    if resp == QMessageBox.Yes:
+                        from database.inventory_queries import dispense_medicine
+                        # simple loop: ask for medicine id and quantity; repeat until cancelled
+                        while True:
+                            mid, ok = QInputDialog.getInt(self, "Medicine ID", "Enter medicine ID to dispense (Cancel to stop):", 0, 0)
+                            if not ok or mid <= 0:
+                                break
+                            qty, ok2 = QInputDialog.getInt(self, "Quantity", "Enter quantity to dispense:", 1, 1)
+                            if not ok2:
+                                break
+                            try:
+                                dispense_medicine(medicine_id=mid, quantity=qty, visit_id=visit_id)
+                            except Exception as exc:
+                                QMessageBox.critical(self, "Dispense Error", str(exc))
             self.accept()
 
         except Exception as exc:
