@@ -393,6 +393,16 @@ class MedicineListWidget(QWidget):
         btn_restock = QPushButton("📦 Restock")
         btn_del = QPushButton("🗑 Delete")
         btn_del.setObjectName("BtnDanger")
+
+        if mode != "all":
+            btn_edit.setEnabled(False)
+            btn_dispense.setEnabled(False)
+            btn_restock.setEnabled(False)
+            btn_del.setEnabled(False)
+            btn_edit.setToolTip("Editing is only available in the All Medicines tab.")
+            btn_dispense.setToolTip("Dispensing is only available in the All Medicines tab.")
+            btn_restock.setToolTip("Restocking is only available in the All Medicines tab.")
+            btn_del.setToolTip("Deleting is only available in the All Medicines tab.")
         
         table = self._tables[mode]
         btn_edit.clicked.connect(lambda: self._on_edit_medicine(table))
