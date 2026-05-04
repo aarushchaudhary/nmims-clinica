@@ -13,11 +13,11 @@ from PySide6.QtWidgets import (
     QLabel, QLineEdit, QSpinBox, QCheckBox, QPushButton,
     QGroupBox, QTextEdit, QDialogButtonBox, QMessageBox,
     QInputDialog,
-    QDateEdit, QFrame, QWidget, QSizePolicy, QScrollArea
+    QDateEdit, QFrame, QWidget, QSizePolicy, QScrollArea, QFileDialog
 )
 from ui.widgets import StyledComboBox
-from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QFont
+from PySide6.QtCore import Qt, QDate, QUrl
+from PySide6.QtGui import QFont, QDesktopServices
 
 from database.patient_queries import get_patient_by_id
 from database.visit_queries   import (
@@ -259,12 +259,18 @@ class ConsultationFormDialog(QDialog):
         btn_cancel = QPushButton("Cancel")
         btn_cancel.clicked.connect(self.reject)
 
+        btn_print = QPushButton("Print PDF")
+        btn_print.setObjectName("BtnWarning")
+        btn_print.clicked.connect(self._on_print_pdf)
+
         self.btn_save = QPushButton("✏️  Update Consultation" if self.is_edit else "💾  Save Consultation")
         self.btn_save.setObjectName("BtnPrimary")
         self.btn_save.setFixedHeight(40)
         self.btn_save.clicked.connect(self._on_save)
 
         h.addStretch()
+        h.addWidget(btn_print)
+        h.addSpacing(8)
         h.addWidget(btn_cancel)
         h.addSpacing(8)
         h.addWidget(self.btn_save)
@@ -359,6 +365,50 @@ class ConsultationFormDialog(QDialog):
                     self, "Duplicate",
                     f"Category '{name.strip()}' already exists."
                 )
+
+    def _export_pdf_payload(self) -> dict:
+        patient = self._patient or {}
+        return {
+            "patient_name": patient.get("name") or "—",
+            "age": patient.get("age") or "—",
+            "sex": patient.get("gender") or "—",
+            "sap_id": patient.get("sap_id") or "—",
+            "phone": patient.get("mobile") or "—",
+            "date_text": self.f_visit_date.date().toString("dd MMM yyyy"),
+            "complaints": self.f_complaint.toPlainText().strip(),
+            "diagnosis": self.f_diagnosis.toPlainText().strip(),
+        }
+
+    def _on_print_pdf(self):
+        try:
+            from utils.consultation_pdf import export_consultation_pdf
+        except ModuleNotFoundError:
+            QMessageBox.warning(
+                self,
+                "PDF Unavailable",
+                "PDF export is not available because PyMuPDF is not installed."
+            )
+            return
+
+        payload = self._export_pdf_payload()
+        default_name = f"Consultation_{payload['sap_id']}_{self.f_visit_date.date().toString('yyyyMMdd')}.pdf"
+        default_path = default_name.replace("/", "_")
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Consultation PDF",
+            default_path,
+            "PDF Files (*.pdf)"
+        )
+        if not file_path:
+            return
+
+        try:
+            saved_path = export_consultation_pdf(file_path, **payload)
+            QMessageBox.information(self, "PDF Created", f"Consultation PDF saved to:\n{saved_path}")
+            QDesktopServices.openUrl(QUrl.fromLocalFile(saved_path))
+        except Exception as exc:
+            QMessageBox.critical(self, "PDF Error", f"Could not create PDF:\n{exc}")
 
     # ── Save ────────────────────────────────────────────────────────────────────
 

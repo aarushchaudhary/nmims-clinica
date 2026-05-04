@@ -11,10 +11,10 @@ from PySide6.QtWidgets import (
     QWidget, QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QFrame, QGroupBox, QScrollArea,
-    QSizePolicy, QTextEdit, QSplitter
+    QSizePolicy, QTextEdit, QSplitter, QFileDialog, QMessageBox
 )
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtCore import Qt, Signal, QUrl
+from PySide6.QtGui import QColor, QFont, QDesktopServices
 
 from database.patient_queries import get_patient_by_id
 from database.visit_queries   import (
@@ -228,6 +228,12 @@ class PatientHistoryWidget(QWidget):
         self.btn_edit_consult.setEnabled(False)
         self.btn_edit_consult.clicked.connect(self._open_edit_consultation)
 
+        self.btn_print_pdf = QPushButton("🖨  Print PDF")
+        self.btn_print_pdf.setObjectName("BtnSecondary")
+        self.btn_print_pdf.setFixedHeight(36)
+        self.btn_print_pdf.setEnabled(False)
+        self.btn_print_pdf.clicked.connect(self._on_print_pdf)
+
         self.btn_new_consult = QPushButton("🩺  New Consultation")
         self.btn_new_consult.setObjectName("BtnPrimary")
         self.btn_new_consult.setFixedHeight(36)
@@ -235,6 +241,8 @@ class PatientHistoryWidget(QWidget):
             lambda: self.consult_requested.emit(self.patient_id)
         )
         hdr.addWidget(self.btn_edit_consult)
+        hdr.addSpacing(8)
+        hdr.addWidget(self.btn_print_pdf)
         hdr.addSpacing(8)
         hdr.addWidget(self.btn_new_consult)
         root.addLayout(hdr)
@@ -327,6 +335,7 @@ class PatientHistoryWidget(QWidget):
         if row < 0 or row >= len(self._visits):
             self.detail_pane.clear()
             self.btn_edit_consult.setEnabled(False)
+            self.btn_print_pdf.setEnabled(False)
             return
         # Match by ID to be safe
         visit_id = int(self.table.item(row, VCOL_ID).text())
@@ -334,23 +343,97 @@ class PatientHistoryWidget(QWidget):
         if visit:
             self.detail_pane.show_visit(visit)
             self.btn_edit_consult.setEnabled(True)
+            self.btn_print_pdf.setEnabled(True)
 
     def _open_edit_consultation(self):
-        row = self.table.currentRow()
-        if row < 0:
+        sel = self.table.selectionModel().selectedRows()
+        if not sel:
             return
-        visit_id = int(self.table.item(row, VCOL_ID).text())
+
+        row = sel[0].row()
+        item = self.table.item(row, VCOL_ID)
+        if item is None:
+            return
+
+        visit_id = int(item.text())
         visit = next((v for v in self._visits if v["id"] == visit_id), None)
         if not visit:
             return
-        from ui.consultations.consultation_form import ConsultationFormDialog
-        dlg = ConsultationFormDialog(
-            patient_id=self.patient_id,
-            visit_id=visit_id,
-            parent=self.window()
+        try:
+            from ui.consultations.consultation_form import ConsultationFormDialog
+            dlg = ConsultationFormDialog(
+                patient_id=self.patient_id,
+                visit_id=visit_id,
+                parent=self.window()
+            )
+            if dlg.exec():
+                self._load_visits()  # refresh table + detail pane
+        except Exception as exc:
+            QMessageBox.critical(self, "Edit Consultation Error", str(exc))
+
+    def _on_print_pdf(self):
+        sel = self.table.selectionModel().selectedRows()
+        if not sel:
+            return
+
+        row = sel[0].row()
+        item = self.table.item(row, VCOL_ID)
+        if item is None:
+            return
+
+        visit_id = int(item.text())
+        visit = next((v for v in self._visits if v["id"] == visit_id), None)
+        if not visit:
+            return
+
+        try:
+            from utils.consultation_pdf import export_consultation_pdf
+        except ModuleNotFoundError:
+            QMessageBox.warning(
+                self,
+                "PDF Unavailable",
+                "PDF export is not available because PyMuPDF is not installed."
+            )
+            return
+
+        patient = self._patient or {}
+        visit_date = visit.get("visit_date") or ""
+        date_str = visit_date[:10] if visit_date else ""
+        date_text = date_str
+        if date_str:
+            from datetime import datetime
+            try:
+                date_text = datetime.strptime(date_str, "%Y-%m-%d").strftime("%d %b %Y")
+            except ValueError:
+                pass
+
+        default_name = f"Consultation_{patient.get('sap_id','')}_{date_str or 'date'}.pdf"
+        default_path = default_name.replace("/", "_")
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Consultation PDF",
+            default_path,
+            "PDF Files (*.pdf)"
         )
-        if dlg.exec():
-            self._load_visits()  # refresh table + detail pane
+        if not file_path:
+            return
+
+        try:
+            saved_path = export_consultation_pdf(
+                file_path,
+                patient_name=patient.get("name") or "—",
+                age=patient.get("age") or "—",
+                sex=patient.get("gender") or "—",
+                sap_id=patient.get("sap_id") or "—",
+                phone=patient.get("mobile") or "—",
+                date_text=date_text,
+                complaints=visit.get("chief_complaint") or "",
+                diagnosis=visit.get("diagnosis") or "",
+            )
+            QMessageBox.information(self, "PDF Created", f"Consultation PDF saved to:\n{saved_path}")
+            QDesktopServices.openUrl(QUrl.fromLocalFile(saved_path))
+        except Exception as exc:
+            QMessageBox.critical(self, "PDF Error", f"Could not create PDF:\n{exc}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
