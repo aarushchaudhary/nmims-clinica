@@ -13,7 +13,8 @@ from PySide6.QtWidgets import (
     QLabel, QLineEdit, QSpinBox, QCheckBox, QPushButton,
     QGroupBox, QTextEdit, QDialogButtonBox, QMessageBox,
     QInputDialog,
-    QDateEdit, QFrame, QWidget, QSizePolicy, QScrollArea, QFileDialog
+    QDateEdit, QFrame, QWidget, QSizePolicy, QScrollArea, QFileDialog,
+    QTableWidget, QTableWidgetItem, QAbstractItemView
 )
 from ui.widgets import StyledComboBox
 from PySide6.QtCore import Qt, QDate, QUrl
@@ -52,6 +53,7 @@ class ConsultationFormDialog(QDialog):
         self._categories = []
         self._visit      = {}
         self._medicines  = []
+        self._selected_medicines = {}
 
         self._build_ui()
         self._load_categories()
@@ -186,7 +188,7 @@ class ConsultationFormDialog(QDialog):
         self.f_treatment.setPlaceholderText("Treatment given")
         self.f_treatment.setMinimumHeight(60)
 
-        self.f_prescription = QTextEdit()
+        med_row = QHBoxLayout()
         self.f_prescription = StyledComboBox()
         self.f_prescription.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.f_prescription.setStyleSheet(
@@ -199,13 +201,36 @@ class ConsultationFormDialog(QDialog):
         self.f_prescription_qty.setSuffix(" units")
         self.f_prescription_qty.setEnabled(False)
 
+        btn_add_med = QPushButton("Add Medicine")
+        btn_add_med.setFixedWidth(120)
+        btn_add_med.clicked.connect(self._on_add_medicine)
+
+        med_row.addWidget(self.f_prescription)
+        med_row.addWidget(self.f_prescription_qty)
+        med_row.addWidget(btn_add_med)
+
+        self.tbl_medicines = QTableWidget(0, 2)
+        self.tbl_medicines.setHorizontalHeaderLabels(["Medicine", "Qty"])
+        self.tbl_medicines.horizontalHeader().setStretchLastSection(True)
+        self.tbl_medicines.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.tbl_medicines.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tbl_medicines.setMinimumHeight(120)
+
+        btn_remove_med = QPushButton("Remove Selected")
+        btn_remove_med.setFixedWidth(130)
+        btn_remove_med.clicked.connect(self._on_remove_selected_medicine)
+
+        med_list_row = QHBoxLayout()
+        med_list_row.addWidget(self.tbl_medicines)
+        med_list_row.addWidget(btn_remove_med)
+
         form.addRow(self._lbl("Chief Complaint"), self.f_complaint)
         form.addRow(self._lbl("Diagnosis"),       self.f_diagnosis)
         form.addRow(self._lbl("Disease Category"), cat_row)
         form.addRow(self._lbl("Investigations"),  self.f_investigations)
         form.addRow(self._lbl("Treatment"),       self.f_treatment)
-        form.addRow(self._lbl("Prescription"),    self.f_prescription)
-        form.addRow(self._lbl("Quantity"),        self.f_prescription_qty)
+        form.addRow(self._lbl("Prescription"),    med_row)
+        form.addRow(self._lbl("Selected Medicines"), med_list_row)
         return grp
 
     def _build_outcomes_group(self) -> QGroupBox:
@@ -361,10 +386,7 @@ class ConsultationFormDialog(QDialog):
         self.f_prescription.clear()
         self.f_prescription.addItem("— Select Medicine —", None)
         for med in self._medicines:
-            name = med.get("name") or "—"
-            strength = med.get("strength_mg")
-            label = f"{name} ({strength} mg)" if strength else name
-            self.f_prescription.addItem(label, med.get("id"))
+            self.f_prescription.addItem(self._med_label(med), med.get("id"))
         self.f_prescription.blockSignals(False)
         self._on_medicine_changed()
 
@@ -378,41 +400,117 @@ class ConsultationFormDialog(QDialog):
 
         med = next((m for m in self._medicines if m.get("id") == med_id), None)
         stock = int(med.get("current_stock", 0)) if med else 0
-        if stock <= 0:
+        selected = int(self._selected_medicines.get(med_id, 0))
+        remaining = max(stock - selected, 0)
+        if remaining <= 0:
             self.f_prescription_qty.setRange(0, 0)
             self.f_prescription_qty.setValue(0)
             self.f_prescription_qty.setEnabled(False)
             return
 
-        self.f_prescription_qty.setRange(1, stock)
+        self.f_prescription_qty.setRange(1, remaining)
         self.f_prescription_qty.setValue(1)
         self.f_prescription_qty.setEnabled(True)
 
-    def _set_prescription_from_text(self, text: str):
-        text = (text or "").strip()
-        if not text:
-            self.f_prescription.setCurrentIndex(0)
-            self.f_prescription_qty.setValue(0)
+    def _med_label(self, med: dict) -> str:
+        name = med.get("name") or "—"
+        strength = med.get("strength_mg")
+        return f"{name} ({strength} mg)" if strength else name
+
+    def _on_add_medicine(self):
+        med_id = self.f_prescription.currentData()
+        if not med_id:
+            QMessageBox.information(self, "Medicine", "Please select a medicine.")
             return
 
-        qty = None
-        name = text
-        if " x " in text:
-            parts = text.split(" x ", 1)
-            name = parts[0].strip()
-            try:
-                qty = int(parts[1].strip())
-            except ValueError:
-                qty = None
+        qty = self.f_prescription_qty.value()
+        if qty <= 0:
+            QMessageBox.information(self, "Quantity", "Please enter a quantity.")
+            return
 
-        idx = self.f_prescription.findText(name, Qt.MatchContains)
-        if idx >= 0:
-            self.f_prescription.setCurrentIndex(idx)
-            if qty:
-                self.f_prescription_qty.setValue(qty)
-        else:
+        med = next((m for m in self._medicines if m.get("id") == med_id), None)
+        stock = int(med.get("current_stock", 0)) if med else 0
+        selected = int(self._selected_medicines.get(med_id, 0))
+        remaining = max(stock - selected, 0)
+        if qty > remaining:
+            QMessageBox.warning(
+                self, "Insufficient Stock",
+                f"Only {remaining} units available for {med.get('name', 'medicine')}."
+            )
+            return
+
+        self._selected_medicines[med_id] = selected + qty
+        self._refresh_medicine_table()
+        self.f_prescription.setCurrentIndex(0)
+        self._on_medicine_changed()
+
+    def _refresh_medicine_table(self):
+        self.tbl_medicines.setRowCount(0)
+        for med_id, qty in self._selected_medicines.items():
+            med = next((m for m in self._medicines if m.get("id") == med_id), None)
+            label = self._med_label(med) if med else "—"
+            row = self.tbl_medicines.rowCount()
+            self.tbl_medicines.insertRow(row)
+
+            item_med = QTableWidgetItem(label)
+            item_med.setData(Qt.UserRole, med_id)
+            item_qty = QTableWidgetItem(str(qty))
+
+            self.tbl_medicines.setItem(row, 0, item_med)
+            self.tbl_medicines.setItem(row, 1, item_qty)
+
+    def _on_remove_selected_medicine(self):
+        row = self.tbl_medicines.currentRow()
+        if row < 0:
+            return
+
+        item = self.tbl_medicines.item(row, 0)
+        med_id = item.data(Qt.UserRole) if item else None
+        if med_id in self._selected_medicines:
+            del self._selected_medicines[med_id]
+        self._refresh_medicine_table()
+        self._on_medicine_changed()
+
+    def _set_prescription_from_text(self, text: str):
+        self._selected_medicines = {}
+        raw = (text or "").strip()
+        if not raw:
             self.f_prescription.setCurrentIndex(0)
             self.f_prescription_qty.setValue(0)
+            self._refresh_medicine_table()
+            return
+
+        parts = []
+        for chunk in raw.replace("\r", "").split("\n"):
+            parts.extend([p.strip() for p in chunk.split(";") if p.strip()])
+
+        for entry in parts:
+            name = entry
+            qty = 1
+            if " x " in entry:
+                name_part, qty_part = entry.split(" x ", 1)
+                name = name_part.strip()
+                try:
+                    qty = int(qty_part.strip())
+                except ValueError:
+                    qty = 1
+
+            med = next(
+                (m for m in self._medicines if (m.get("name") or "").lower() == name.lower()),
+                None
+            )
+            if not med:
+                med = next(
+                    (m for m in self._medicines if name.lower() in (m.get("name") or "").lower()),
+                    None
+                )
+            if med:
+                med_id = med.get("id")
+                self._selected_medicines[med_id] = self._selected_medicines.get(med_id, 0) + max(qty, 1)
+
+        self._refresh_medicine_table()
+        self.f_prescription.setCurrentIndex(0)
+        self._on_medicine_changed()
 
     def _on_add_category(self):
         from PySide6.QtWidgets import QInputDialog
@@ -502,12 +600,17 @@ class ConsultationFormDialog(QDialog):
 
         referral = self.f_referral.text().strip() or None
 
-        med_id = self.f_prescription.currentData()
-        med_qty = self.f_prescription_qty.value()
-        med = next((m for m in self._medicines if m.get("id") == med_id), None) if med_id else None
+        selected_items = []
+        for med_id, qty in self._selected_medicines.items():
+            med = next((m for m in self._medicines if m.get("id") == med_id), None)
+            if med and qty > 0:
+                selected_items.append((med, qty))
+
         prescription_text = None
-        if med and med_qty > 0:
-            prescription_text = f"{med.get('name', 'Medicine')} x {med_qty}"
+        if selected_items:
+            prescription_text = "; ".join(
+                f"{med.get('name', 'Medicine')} x {qty}" for med, qty in selected_items
+            )
 
         common_kwargs = dict(
             visit_type       = self.f_visit_type.currentText(),
@@ -538,19 +641,19 @@ class ConsultationFormDialog(QDialog):
                     visit_date = visit_datetime,
                     **common_kwargs
                 )
-                if med and med_qty > 0:
+                for med, qty in selected_items:
                     stock = int(med.get("current_stock", 0))
-                    if med_qty > stock:
+                    if qty > stock:
                         QMessageBox.warning(
                             self, "Insufficient Stock",
                             f"Only {stock} units available for {med.get('name', 'medicine')}."
                         )
-                    else:
-                        dispense_medicine(
-                            medicine_id=med_id,
-                            quantity=med_qty,
-                            visit_id=visit_id
-                        )
+                        continue
+                    dispense_medicine(
+                        medicine_id=med.get("id"),
+                        quantity=qty,
+                        visit_id=visit_id
+                    )
             self.accept()
 
         except Exception as exc:
