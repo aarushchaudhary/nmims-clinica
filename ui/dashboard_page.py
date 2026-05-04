@@ -9,11 +9,11 @@ Displays critical alerts:
 """
 
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QFrame, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
 )
 from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtGui import QFont, QColor, QPixmap
 
 from database.inventory_queries import get_expiring_soon, get_low_stock_medicines
 from database.visit_queries import get_followups_for_date
@@ -29,17 +29,27 @@ class DashboardWidget(QWidget):
         root.setContentsMargins(24, 20, 24, 20)
         root.setSpacing(20)
 
-        # Header
-        header_h = QVBoxLayout()
-        title = QLabel("🚨  System Alerts")
-        title.setObjectName("PageTitle")
-        
-        subtitle = QLabel("Overview of critical clinical operations and inventory alerts.")
-        subtitle.setObjectName("PageSubtitle")
-        
-        header_h.addWidget(title)
-        header_h.addWidget(subtitle)
-        root.addLayout(header_h)
+        # Top half logo + label
+        logo = QLabel()
+        logo.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        pix = QPixmap("assets/icons/logo.png")
+        if not pix.isNull():
+            logo.setPixmap(pix.scaledToHeight(196, Qt.SmoothTransformation))
+
+        top_label = QLabel("NMIMS CLINICA")
+        top_label.setStyleSheet("font-size:28px; font-weight:bold; color:#0f172a;")
+        top_label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+
+        top_container = QWidget()
+        top_layout = QVBoxLayout(top_container)
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.setSpacing(10)
+        top_layout.addStretch(1)
+        top_layout.addWidget(logo, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
+        top_layout.addWidget(top_label, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
+        top_layout.addStretch(2)
+
+        root.addWidget(top_container, stretch=1)
 
         # Three column layout for cards
         cards_layout = QHBoxLayout()

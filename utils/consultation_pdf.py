@@ -71,7 +71,7 @@ def export_consultation_pdf(
 
     regular_fontfile = _windows_font_path("segoeui.ttf")
     bold_fontfile = _windows_font_path("segoeuib.ttf") or regular_fontfile
-    rx_fontfile = _windows_font_path("timesbd.ttf") or bold_fontfile
+    rx_icon_path = Path(__file__).resolve().parents[1] / "assets" / "icons" / "rx.png"
 
     # Header block
     header_y = 28
@@ -100,11 +100,15 @@ def export_consultation_pdf(
         page.insert_text((margin_x, 74), date_value, fontname="helv", fontsize=12)
     _line(page, center_x, 64, center_x, page_height - 34, width=1)
 
-    # Rx symbol on right side
-    if rx_fontfile:
-        page.insert_text((page_width - 118, 82), "Rx", fontfile=rx_fontfile, fontsize=34, color=(0, 0, 0))
-    else:
-        page.insert_text((page_width - 118, 82), "Rx", fontname="helv", fontsize=34, color=(0, 0, 0))
+    # Rx symbol on right side (image)
+    if rx_icon_path.exists():
+        img_w = 64
+        img_h = 64
+        img_x1 = page_width - margin_x
+        img_x0 = img_x1 - img_w
+        img_y0 = 60
+        img_y1 = img_y0 + img_h
+        page.insert_image(fitz.Rect(img_x0, img_y0, img_x1, img_y1), filename=str(rx_icon_path))
 
     left_x = margin_x
     right_x = center_x + 18
@@ -117,13 +121,13 @@ def export_consultation_pdf(
         page.insert_text((left_x, content_top), "Complaints", fontname="helv", fontsize=14)
         page.insert_text((right_x, content_top), "Diagnosis", fontname="helv", fontsize=14)
 
-    # Leave blank space in left column for handwritten additions.
-    y = content_top + 120
-    _line(page, left_x, y, center_x - 20, y, color=(0.75, 0.75, 0.75), width=0.7)
+    investigation_y = content_top + 190
+    if bold_fontfile:
+        page.insert_text((left_x, investigation_y), "Investigation", fontfile=bold_fontfile, fontsize=13)
+    else:
+        page.insert_text((left_x, investigation_y), "Investigation", fontname="helv", fontsize=13)
 
-    # Leave blank space in right column for handwritten additions.
-    y2 = content_top + 120
-    _line(page, right_x, y2, page_width - margin_x, y2, color=(0.75, 0.75, 0.75), width=0.7)
+    # Leave blank space in both columns for handwritten additions.
 
     doc.save(str(output_path))
     doc.close()

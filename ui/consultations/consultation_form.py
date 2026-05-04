@@ -24,6 +24,7 @@ from database.visit_queries   import (
     create_visit, update_visit, get_visit_by_id,
     get_all_categories, add_custom_category
 )
+from database.inventory_queries import get_all_medicines, dispense_medicine
 
 
 VISIT_TYPES = ["Walk-in", "Scheduled", "Emergency"]
@@ -50,9 +51,11 @@ class ConsultationFormDialog(QDialog):
         self._patient    = get_patient_by_id(patient_id) or {}
         self._categories = []
         self._visit      = {}
+        self._medicines  = []
 
         self._build_ui()
         self._load_categories()
+        self._load_medicines()
 
         if self.is_edit:
             self._visit = get_visit_by_id(visit_id) or {}
@@ -184,8 +187,17 @@ class ConsultationFormDialog(QDialog):
         self.f_treatment.setMinimumHeight(60)
 
         self.f_prescription = QTextEdit()
-        self.f_prescription.setPlaceholderText("Medicines prescribed (free text)")
-        self.f_prescription.setMinimumHeight(60)
+        self.f_prescription = StyledComboBox()
+        self.f_prescription.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.f_prescription.setStyleSheet(
+            "QComboBox { background-color: #ffffff; color: #1e293b; }"
+        )
+        self.f_prescription.currentIndexChanged.connect(self._on_medicine_changed)
+
+        self.f_prescription_qty = QSpinBox()
+        self.f_prescription_qty.setRange(0, 0)
+        self.f_prescription_qty.setSuffix(" units")
+        self.f_prescription_qty.setEnabled(False)
 
         form.addRow(self._lbl("Chief Complaint"), self.f_complaint)
         form.addRow(self._lbl("Diagnosis"),       self.f_diagnosis)
@@ -193,6 +205,7 @@ class ConsultationFormDialog(QDialog):
         form.addRow(self._lbl("Investigations"),  self.f_investigations)
         form.addRow(self._lbl("Treatment"),       self.f_treatment)
         form.addRow(self._lbl("Prescription"),    self.f_prescription)
+        form.addRow(self._lbl("Quantity"),        self.f_prescription_qty)
         return grp
 
     def _build_outcomes_group(self) -> QGroupBox:
@@ -305,7 +318,7 @@ class ConsultationFormDialog(QDialog):
         self.f_diagnosis.setPlainText(v.get("diagnosis") or "")
         self.f_investigations.setPlainText(v.get("investigations") or "")
         self.f_treatment.setPlainText(v.get("treatment") or "")
-        self.f_prescription.setPlainText(v.get("prescription") or "")
+        self._set_prescription_from_text(v.get("prescription") or "")
 
         # Category — must run after _load_categories()
         cat_id = v.get("category_id")
@@ -341,6 +354,65 @@ class ConsultationFormDialog(QDialog):
         for cat in self._categories:
             suffix = "  ★" if cat.get("is_custom") else ""
             self.f_category.addItem(cat["name"] + suffix, cat["id"])
+
+    def _load_medicines(self):
+        self._medicines = get_all_medicines()
+        self.f_prescription.blockSignals(True)
+        self.f_prescription.clear()
+        self.f_prescription.addItem("— Select Medicine —", None)
+        for med in self._medicines:
+            name = med.get("name") or "—"
+            strength = med.get("strength_mg")
+            label = f"{name} ({strength} mg)" if strength else name
+            self.f_prescription.addItem(label, med.get("id"))
+        self.f_prescription.blockSignals(False)
+        self._on_medicine_changed()
+
+    def _on_medicine_changed(self):
+        med_id = self.f_prescription.currentData()
+        if not med_id:
+            self.f_prescription_qty.setRange(0, 0)
+            self.f_prescription_qty.setValue(0)
+            self.f_prescription_qty.setEnabled(False)
+            return
+
+        med = next((m for m in self._medicines if m.get("id") == med_id), None)
+        stock = int(med.get("current_stock", 0)) if med else 0
+        if stock <= 0:
+            self.f_prescription_qty.setRange(0, 0)
+            self.f_prescription_qty.setValue(0)
+            self.f_prescription_qty.setEnabled(False)
+            return
+
+        self.f_prescription_qty.setRange(1, stock)
+        self.f_prescription_qty.setValue(1)
+        self.f_prescription_qty.setEnabled(True)
+
+    def _set_prescription_from_text(self, text: str):
+        text = (text or "").strip()
+        if not text:
+            self.f_prescription.setCurrentIndex(0)
+            self.f_prescription_qty.setValue(0)
+            return
+
+        qty = None
+        name = text
+        if " x " in text:
+            parts = text.split(" x ", 1)
+            name = parts[0].strip()
+            try:
+                qty = int(parts[1].strip())
+            except ValueError:
+                qty = None
+
+        idx = self.f_prescription.findText(name, Qt.MatchContains)
+        if idx >= 0:
+            self.f_prescription.setCurrentIndex(idx)
+            if qty:
+                self.f_prescription_qty.setValue(qty)
+        else:
+            self.f_prescription.setCurrentIndex(0)
+            self.f_prescription_qty.setValue(0)
 
     def _on_add_category(self):
         from PySide6.QtWidgets import QInputDialog
@@ -430,6 +502,13 @@ class ConsultationFormDialog(QDialog):
 
         referral = self.f_referral.text().strip() or None
 
+        med_id = self.f_prescription.currentData()
+        med_qty = self.f_prescription_qty.value()
+        med = next((m for m in self._medicines if m.get("id") == med_id), None) if med_id else None
+        prescription_text = None
+        if med and med_qty > 0:
+            prescription_text = f"{med.get('name', 'Medicine')} x {med_qty}"
+
         common_kwargs = dict(
             visit_type       = self.f_visit_type.currentText(),
             chief_complaint  = self.f_complaint.toPlainText().strip() or None,
@@ -437,7 +516,7 @@ class ConsultationFormDialog(QDialog):
             category_id      = category_id,
             investigations   = self.f_investigations.toPlainText().strip() or None,
             treatment        = self.f_treatment.toPlainText().strip() or None,
-            prescription     = self.f_prescription.toPlainText().strip() or None,
+            prescription     = prescription_text,
             referral         = referral,
             rest_days        = self.f_rest_days.value(),
             medical_leave    = self.chk_med_leave.isChecked(),
@@ -459,27 +538,19 @@ class ConsultationFormDialog(QDialog):
                     visit_date = visit_datetime,
                     **common_kwargs
                 )
-                # If a prescription was entered, offer to record dispenses linked to this visit.
-                if common_kwargs.get("prescription"):
-                    resp = QMessageBox.question(
-                        self, "Dispense Medicines",
-                        "Prescription present. Do you want to dispense medicines now and link to this visit?",
-                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No
-                    )
-                    if resp == QMessageBox.Yes:
-                        from database.inventory_queries import dispense_medicine
-                        # simple loop: ask for medicine id and quantity; repeat until cancelled
-                        while True:
-                            mid, ok = QInputDialog.getInt(self, "Medicine ID", "Enter medicine ID to dispense (Cancel to stop):", 0, 0)
-                            if not ok or mid <= 0:
-                                break
-                            qty, ok2 = QInputDialog.getInt(self, "Quantity", "Enter quantity to dispense:", 1, 1)
-                            if not ok2:
-                                break
-                            try:
-                                dispense_medicine(medicine_id=mid, quantity=qty, visit_id=visit_id)
-                            except Exception as exc:
-                                QMessageBox.critical(self, "Dispense Error", str(exc))
+                if med and med_qty > 0:
+                    stock = int(med.get("current_stock", 0))
+                    if med_qty > stock:
+                        QMessageBox.warning(
+                            self, "Insufficient Stock",
+                            f"Only {stock} units available for {med.get('name', 'medicine')}."
+                        )
+                    else:
+                        dispense_medicine(
+                            medicine_id=med_id,
+                            quantity=med_qty,
+                            visit_id=visit_id
+                        )
             self.accept()
 
         except Exception as exc:
