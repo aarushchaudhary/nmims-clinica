@@ -131,13 +131,13 @@ class ConsultationFormDialog(QDialog):
         self.f_visit_type = StyledComboBox()
         self.f_visit_type.addItems(VISIT_TYPES)
         self.f_visit_type.setStyleSheet(
-            "QComboBox { background-color: #ffffff; color: #1e293b; }"
+            "QComboBox { background-color: #ffffff; color: #000000; }"
         )
 
         self.f_diagnosed_by = StyledComboBox()
         self.f_diagnosed_by.addItems(["Doctor", "Nurse"])
         self.f_diagnosed_by.setStyleSheet(
-            "QComboBox { background-color: #ffffff; color: #1e293b; }"
+            "QComboBox { background-color: #ffffff; color: #000000; }"
         )
 
         self.f_visit_date = QDateEdit()
@@ -145,7 +145,7 @@ class ConsultationFormDialog(QDialog):
         self.f_visit_date.setDate(QDate.currentDate())
         self.f_visit_date.setDisplayFormat("dd MMM yyyy")
         self.f_visit_date.setStyleSheet(
-            "QDateEdit { background-color: #ffffff; color: #1e293b; }"
+            "QDateEdit { background-color: #ffffff; color: #000000; }"
         )
 
         form.addRow(self._lbl("Visit Type *"), self.f_visit_type)
@@ -172,7 +172,7 @@ class ConsultationFormDialog(QDialog):
         self.f_category = StyledComboBox()
         self.f_category.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.f_category.setStyleSheet(
-            "QComboBox { background-color: #ffffff; color: #1e293b; }"
+            "QComboBox { background-color: #ffffff; color: #000000; }"
         )
         btn_add_cat = QPushButton("＋ Add Category")
         btn_add_cat.setFixedWidth(130)
@@ -192,7 +192,7 @@ class ConsultationFormDialog(QDialog):
         self.f_prescription = StyledComboBox()
         self.f_prescription.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.f_prescription.setStyleSheet(
-            "QComboBox { background-color: #ffffff; color: #1e293b; }"
+            "QComboBox { background-color: #ffffff; color: #000000; }"
         )
         self.f_prescription.currentIndexChanged.connect(self._on_medicine_changed)
 
@@ -261,7 +261,7 @@ class ConsultationFormDialog(QDialog):
         self.f_followup_date.setDisplayFormat("dd MMM yyyy")
         self.f_followup_date.setEnabled(False)
         self.f_followup_date.setStyleSheet(
-            "QDateEdit { background-color: #ffffff; color: #1e293b; }"
+            "QDateEdit { background-color: #ffffff; color: #000000; }"
         )
         self.chk_followup.toggled.connect(self.f_followup_date.setEnabled)
         fu_row.addWidget(self.chk_followup)

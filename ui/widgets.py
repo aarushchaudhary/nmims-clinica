@@ -17,6 +17,6 @@ class StyledComboBox(QComboBox):
         super().__init__(parent)
         self.view().setStyleSheet(
             "background-color: #ffffff;"
-            "color: #1e293b;"
+            "color: #000000;"
             "padding: 2px 4px;"
         )
