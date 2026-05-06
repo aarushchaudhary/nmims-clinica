@@ -490,19 +490,35 @@ Create a single .exe file for distribution using **PyInstaller** (included in de
    pip install -r requirements.txt
    ```
 
-2. **Build executable:**
+2. **Build executable using PyInstaller:**
+
+   **Option A: Using spec file (if main.spec exists):**
    ```bash
    pyinstaller main.spec
    ```
 
+   **Option B: Using command line (Recommended for latest build):**
+   ```bash
+   pyinstaller --noconfirm --onedir --windowed --name "NMIMS Clinica" --icon "assets/icons/logo.png" --add-data "assets;assets" --add-data "database;database" main.py
+   ```
+
+   **Command flags explained:**
+   - `--noconfirm` - Skip confirmation prompts
+   - `--onedir` - Create executable in a directory (not single file)
+   - `--windowed` - Hide console window on startup
+   - `--name` - Application name (shown in taskbar/shortcuts)
+   - `--icon` - Path to icon file (.png or .ico)
+   - `--add-data` - Include non-Python files (assets, database template)
+
 3. **Distribute:**
-   - Standalone .exe located in `dist/main/main.exe`
+   - Application .exe located in `dist/NMIMS Clinica/NMIMS Clinica.exe`
    - No Python installation required on target machine
-   - Database and exports created relative to executable location
+   - Database is created in user's AppData on first run
+   - All required assets bundled with executable
 
 ### Build Configuration
 
-The `main.spec` file controls the build process:
+If using `main.spec` file, it controls:
 - Single-file vs. directory output
 - Icon embedding
 - Hidden imports
@@ -510,11 +526,10 @@ The `main.spec` file controls the build process:
 
 ### Distribution Checklist
 - [ ] Test .exe on clean Windows machine
-- [ ] Verify database initialization on first run
+- [ ] Verify database initialization on first run (`%APPDATA%\NmimsClinica\`)
 - [ ] Test all export functions
-- [atabase is now stored in: C:\Users\<YourUsername>\AppData\Roaming\NmimsClinica\
-# Delete clinica.db-wal and clinicaorrectly
-- [ ] Check icon displays properly
+- [ ] Confirm file dialogs work correctly
+- [ ] Check icon displays properly in taskbar
 
 ---
 
