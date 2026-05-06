@@ -31,23 +31,23 @@ class DashboardWidget(QWidget):
 
         # Top half logo + label
         logo = QLabel()
-        logo.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        logo.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         pix = QPixmap("assets/icons/logo.png")
         if not pix.isNull():
-            logo.setPixmap(pix.scaledToHeight(196, Qt.SmoothTransformation))
+            logo.setPixmap(pix.scaledToHeight(180, Qt.SmoothTransformation))
 
         top_label = QLabel("NMIMS CLINICA")
-        top_label.setStyleSheet("font-size:28px; font-weight:bold; color:#0f172a;")
-        top_label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        top_label.setStyleSheet("font-size:48px; font-weight:bold; color:#0f172a;")
+        top_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         top_container = QWidget()
-        top_layout = QVBoxLayout(top_container)
+        top_layout = QHBoxLayout(top_container)
         top_layout.setContentsMargins(0, 0, 0, 0)
-        top_layout.setSpacing(10)
+        top_layout.setSpacing(30)
         top_layout.addStretch(1)
-        top_layout.addWidget(logo, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
-        top_layout.addWidget(top_label, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
-        top_layout.addStretch(2)
+        top_layout.addWidget(logo, alignment=Qt.AlignCenter | Qt.AlignVCenter)
+        top_layout.addWidget(top_label, alignment=Qt.AlignCenter | Qt.AlignVCenter)
+        top_layout.addStretch(1)
 
         root.addWidget(top_container, stretch=1)
 
