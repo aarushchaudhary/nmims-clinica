@@ -129,10 +129,17 @@ py main.py
 ```
 
 **First Run:**
-- The database (`clinic.db`) is automatically initialized
+- The database (`clinica.db`) is automatically initialized
+- Database is stored in `%APPDATA%\NmimsClinica\` directory (Windows)
 - Schema and tables are created automatically
-- Default disease categories are seeded
+- Default disease categories and medicine subtypes are seeded
 - Application is ready for immediate use
+
+### Database Location
+
+The database file is stored in the user's AppData directory for proper Windows app behavior:
+- **Windows:** `C:\Users\<YourUsername>\AppData\Roaming\NmimsClinica\clinica.db`
+- **Portable Usage:** If database doesn't exist in AppData, it's copied from the installation directory
 
 ### Production Deployment
 
@@ -146,53 +153,59 @@ See [Building Standalone Executable](#building-standalone-executable) for creati
 cms/
 ├── main.py                      # Entry point - initializes DB and launches GUI
 ├── requirements.txt             # Python dependencies
-├── clinic.db                    # SQLite database (auto-created on first run)
+├── LICENSE                      # License file
+├── README.md                    # This file
+├── NMIMS Clinica.spec          # PyInstaller build configuration
 │
 ├── database/                    # Data layer - queries and connection management
-│   ├── db_manager.py           # Connection pooling, schema initialization, migrations
-│   ├── patient_queries.py       # Patient CRUD, search, statistics
+│   ├── __init__.py             # Package initialization
+│   ├── db_manager.py           # Connection pooling, schema init, migrations, get_db_path()
+│   ├── patient_queries.py       # Patient CRUD, search, statistics queries
 │   ├── visit_queries.py         # Consultation/visit queries, disease tracking
-│   └── inventory_queries.py     # Medicine, equipment, expiry, stock queries
+│   └── inventory_queries.py     # Medicine, equipment, expiry, stock alert queries
 │
-├── models/                      # Data models - pure dataclasses for type safety
-│   ├── patient.py              # Patient dataclass with field validation
+├── models/                      # Data models - dataclasses for type safety
+│   ├── __init__.py             # Package initialization
+│   ├── patient.py              # Patient dataclass with validation
 │   ├── visit.py                # Consultation/visit dataclass
-│   ├── inventory.py            # Medicine, Equipment, DispenseRecord dataclasses
-│   └── __init__.py
+│   └── inventory.py            # Medicine, Equipment, DispenseRecord dataclasses
 │
 ├── ui/                         # User interface - PySide6 GUI components
+│   ├── __init__.py             # Package initialization
 │   ├── main_window.py          # Root application window, navigation sidebar
-│   ├── dashboard_page.py       # System alerts and operational overview
+│   ├── dashboard_page.py       # System alerts and operational overview (HOMEPAGE)
 │   ├── reports_page.py         # Report generation and export UI
-│   ├── widgets.py              # Reusable styled components (ComboBox, etc.)
+│   ├── widgets.py              # Reusable styled components (ComboBox, DateEdit, etc.)
 │   │
 │   ├── patients/               # Patient management module
 │   │   ├── patient_list.py     # Searchable patient list with CRUD actions
 │   │   ├── patient_form.py     # Add/edit patient dialog with validation
-│   │   └── patient_history.py  # Patient history timeline view
+│   │   └── patient_history.py  # Patient history/timeline view
 │   │
 │   ├── consultations/          # Consultation/visit management module
 │   │   ├── consultation_list.py # View and manage consultations
 │   │   └── consultation_form.py # Record new consultation with disease/medicine
 │   │
 │   └── inventory/              # Inventory management module
-│       ├── medicine_list.py    # Medicine catalog with stock levels
+│       ├── medicine_list.py    # Medicine catalog with stock levels and alerts
 │       └── inventory_form.py   # Add/edit medicine and equipment
 │
 ├── exports/                    # Report generation and Excel export
-│   ├── excel_exporter.py       # Main export functions (patients, visits, inventory, etc.)
+│   ├── excel_exporter.py       # Core export functions (patients, visits, inventory)
 │   └── excel_exporter_threaded.py # Multi-threaded export for large datasets
 │
 ├── utils/                      # Utility functions - validation, helpers
-│   ├── validators.py           # Form validation logic with error reporting
-│   └── __init__.py
+│   ├── __init__.py             # Package initialization
+│   ├── validators.py           # Form validation with structured error reporting
+│   └── consultation_pdf.py     # PDF generation for consultation records
 │
 ├── assets/                     # Static resources
-│   └── icons/                  # Application icons and images
-│       └── logo.png           # App branding
+│   └── icons/                  # Application icons and logos
+│       └── logo.png           # NMIMS Clinica branding/logo
 │
 └── build/                      # Build artifacts (created by PyInstaller)
-    └── main/                   # Compiled application files
+    ├── main/                   # Build intermediate files
+    └── NMIMS Clinica/          # Build intermediate files
 ```
 
 ---
@@ -273,7 +286,16 @@ cms/
 
 ## Database Schema
 
-The application uses **SQLite** with automatic schema initialization.
+The application uses **SQLite** with automatic schema initialization in `%APPDATA%\NmimsClinica\clinica.db`.
+
+### Database Initialization
+
+The `db_manager.py` module handles:
+- **get_db_path()** - Returns AppData path and ensures directory exists
+- **initialize_db()** - Creates schema, tables, indexes on first run
+- **_seed_defaults()** - Populates predefined disease categories and medicine subtypes
+- **_apply_migrations()** - Applies schema migrations safely
+- **get_connection()** - Returns SQLite connection with WAL mode enabled
 
 ### Key Tables
 
@@ -286,14 +308,31 @@ The application uses **SQLite** with automatic schema initialization.
 - school (TEXT) - School affiliation
 - mobile (TEXT) - Contact number
 - dob (TEXT) - Date of birth
-- gender (TEXT) - 'Male' | 'Female' | 'Other'
-- blood_group (TEXT) - Blood type
-- address (TEXT) - Address
+- gender (TEXT) - 'Male' | → patients(id) ON DELETE CASCADE
+- visit_date (TEXT) - Default: now()
+- visit_type (TEXT) - 'Walk-in' | 'Scheduled' | 'Emergency'
+- chief_complaint (TEXT)
+- diagnosis (TEXT)
+- category_id (FOREIGN KEY) → disease_categories(id)
+- investigations (TEXT)
+- treatment (TEXT)
+- prescription (TEXT)
+- referral (TEXT) - Hospital/Specialist name or NULL
+- rest_days (INTEGER)
+- medical_leave (INTEGER) - Boolean
+- ambulance_used (INTEGER) - Boolean
+- diagnosed_by (TEXT) - 'Doctor' | 'Nurse'
+- follow_up_date (TEXT)
+- notes (TEXT)
 - created_at, updated_at (TEXT)
 ```
 
-**visits (Consultations)**
+**disease_categories**
 ```
+- id (INTEGER PRIMARY KEY)
+- name (TEXT UNIQUE NOT NULL)
+- is_custom (INTEGER) - 0 for predefined, 1 for user-added
+- created_at (TEXT)
 - id (INTEGER PRIMARY KEY)
 - patient_id (FOREIGN KEY)
 - date (TEXT)
@@ -308,28 +347,58 @@ The application uses **SQLite** with automatic schema initialization.
 **medicines**
 ```
 - id (INTEGER PRIMARY KEY)
-- name (TEXT)
-- dosage (TEXT)
+- name (TEXT NOT NULL)
+- subtype_id (FOREIGN KEY) → medicine_subtypes(id)
 - batch_number (TEXT)
-- expiry_date (TEXT)
+- dosage (TEXT)
+- strength_mg (INTEGER)
+- stock_received (INTEGER)
+- current_stock (INTEGER)
+- minimum_stock_alert (INTEGER) - Default: 10
+- mfg_date (TEXT)
+- expiry_date (TEXT NOT NULL)
+- dispensed_after_expiry (INTEGER) - Safety tracking
+- supplier (TEXT)
+- notes (TEXT)
+- created_at, updated_at (TEXT)
+```
+
+**medicine_subtypes**
+```
+- id (INTEGER PRIMARY KEY)
+- name (TEXT UNIQUE) - e.g., Tablet, Capsule, Injection, Ointment, etc.
+```
+
+**medicine_dispenses**
+```
+- id (INTEGER PRIMARY KEY)
+- medicine_id (FOREIGN KEY) - Links to medicines table
+- visit_id (FOREIGN KEY) - Links to visits table (optional)
 - quantity (INTEGER)
-- cost (REAL)
-```
+- dispensed_at (TEXT), expiry_date)
+- WAL (Write-Ahead Logging) mode for concurrent access
+- Automatic timestamps (created_at, updated_at) with triggers
+- Auto-deduction of stock on medicine dispense (trigger)
+- Schema versioning for safe migrations
+- Check constraints for data integrity
 
-**disease_categories**
+**equipment**
 ```
 - id (INTEGER PRIMARY KEY)
-- name (TEXT UNIQUE)
-- is_custom (INTEGER) - 1 for user-added, 0 for predefined
+- name (TEXT NOT NULL)
+- category (TEXT) - 'Instrument' | 'Equipment' | 'Miscellaneous'
+- quantity (INTEGER)
+- disposal_required (INTEGER) - Boolean flag
+- purchase_date (TEXT)
+- last_serviced_date (TEXT)
+- notes (TEXT)
+- created_at, updated_at (TEXT)
 ```
 
-**dispense_log**
+**schema_version**
 ```
-- id (INTEGER PRIMARY KEY)
-- medicine_id (FOREIGN KEY)
-- visit_id (FOREIGN KEY)
-- quantity_dispensed (INTEGER)
-- date (TEXT)
+- version (INTEGER PRIMARY KEY)
+- applied_at (TEXT) - Migration timestamp
 ```
 
 **Database Features:**
@@ -443,7 +512,8 @@ The `main.spec` file controls the build process:
 - [ ] Test .exe on clean Windows machine
 - [ ] Verify database initialization on first run
 - [ ] Test all export functions
-- [ ] Confirm file dialogs work correctly
+- [atabase is now stored in: C:\Users\<YourUsername>\AppData\Roaming\NmimsClinica\
+# Delete clinica.db-wal and clinicaorrectly
 - [ ] Check icon displays properly
 
 ---
@@ -515,8 +585,8 @@ pip install -r requirements.txt
 ## License
 
 See LICENSE file for terms and conditions.
-
----
+May 2026  
+**Version:** 1.0 (Production with AppData Integra
 
 **Last Updated:** April 2026  
 **Version:** 1.0 (Production)

@@ -12,12 +12,37 @@ Handles:
 import sqlite3
 import os
 import logging
+import shutil
+import sys
 
 logger = logging.getLogger(__name__)
 
-# ── DB file lives next to the running executable (or project root in dev) ──────
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, '..', 'clinic.db')
+# ── DB path handling ──────────────────────────────────────────────────────────
+
+def get_db_path():
+    # Get the user's AppData/Roaming directory
+    app_data = os.getenv('APPDATA')
+    app_dir = os.path.join(app_data, 'NmimsClinica')
+    
+    # Create the directory if it doesn't exist
+    if not os.path.exists(app_dir):
+        os.makedirs(app_dir)
+        
+    db_path = os.path.join(app_dir, 'clinica.db')
+    
+    # If the database doesn't exist in AppData, copy the blank one from your installation folder
+    if not os.path.exists(db_path):
+        # Determine if running as a script or a frozen PyInstaller executable
+        if getattr(sys, 'frozen', False):
+            base_dir = sys._MEIPASS
+        else:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            
+        initial_db = os.path.join(base_dir, 'database', 'clinica.db')
+        if os.path.exists(initial_db):
+            shutil.copy2(initial_db, db_path)
+            
+    return db_path
 
 
 # ─────────────────────────────────────────────
@@ -31,7 +56,7 @@ def get_connection() -> sqlite3.Connection:
     - foreign keys enforced
     - WAL mode for better concurrent read performance
     """
-    conn = sqlite3.connect(os.path.normpath(DB_PATH))
+    conn = sqlite3.connect(os.path.normpath(get_db_path()))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
@@ -279,8 +304,6 @@ def _seed_defaults(conn: sqlite3.Connection):
 # is not yet recorded in schema_version.
 
 MIGRATIONS = [
-    (1, "ALTER TABLE medicines ADD COLUMN dosage TEXT;"),
-    (2, "ALTER TABLE medicines ADD COLUMN strength_mg INTEGER;"),
 ]
 
 
@@ -314,7 +337,7 @@ def initialize_db():
     Creates all tables, seeds defaults, applies any pending migrations.
     Safe to call multiple times — all statements are CREATE IF NOT EXISTS.
     """
-    logger.info(f"Initializing database at: {os.path.normpath(DB_PATH)}")
+    logger.info(f"Initializing database at: {os.path.normpath(get_db_path())}")
     conn = get_connection()
     try:
         conn.executescript(SCHEMA_SQL)
