@@ -31,6 +31,14 @@ def _rows_to_list(rows) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def _get_current_stock(conn: sqlite3.Connection, medicine_id: int) -> Optional[int]:
+    row = conn.execute(
+        "SELECT current_stock FROM medicines WHERE id = ?",
+        (medicine_id,)
+    ).fetchone()
+    return row[0] if row else None
+
+
 def _today_str() -> str:
     return date.today().isoformat()
 
@@ -318,6 +326,7 @@ def dispense_medicine(
     """
     conn = get_connection()
     try:
+        prev_stock = _get_current_stock(conn, medicine_id)
         cursor = conn.execute(
             """
             INSERT INTO medicine_dispenses
@@ -332,6 +341,22 @@ def dispense_medicine(
                 "UPDATE medicines SET dispensed_after_expiry = dispensed_after_expiry + ? WHERE id = ?",
                 (quantity, medicine_id)
             )
+
+        # Safety net: if a legacy DB lacks the trigger, deduct stock here.
+        if prev_stock is not None:
+            new_stock = _get_current_stock(conn, medicine_id)
+            if new_stock == prev_stock:
+                conn.execute(
+                    """
+                    UPDATE medicines
+                    SET current_stock = CASE
+                        WHEN current_stock - ? < 0 THEN 0
+                        ELSE current_stock - ?
+                    END
+                    WHERE id = ?
+                    """,
+                    (quantity, quantity, medicine_id)
+                )
 
         conn.commit()
         logger.info(

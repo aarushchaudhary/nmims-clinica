@@ -119,19 +119,51 @@ class ReportsWidget(QWidget):
             self._on_error(str(e))
 
     def _export_patients(self):
-        from exports.excel_exporter_threaded import ExportPatientsThread
+        try:
+            from exports.excel_exporter_threaded import ExportPatientsThread
+        except ModuleNotFoundError as exc:
+            QMessageBox.warning(
+                self,
+                "Export Unavailable",
+                f"Excel export is not available because '{exc.name}' is missing."
+            )
+            return
         self._start_export_thread(ExportPatientsThread(export_dir=self.dir_input.text()))
 
     def _export_visits(self):
-        from exports.excel_exporter_threaded import ExportVisitsThread
+        try:
+            from exports.excel_exporter_threaded import ExportVisitsThread
+        except ModuleNotFoundError as exc:
+            QMessageBox.warning(
+                self,
+                "Export Unavailable",
+                f"Excel export is not available because '{exc.name}' is missing."
+            )
+            return
         self._start_export_thread(ExportVisitsThread(export_dir=self.dir_input.text()))
 
     def _export_inventory(self):
-        from exports.excel_exporter_threaded import ExportInventoryThread
+        try:
+            from exports.excel_exporter_threaded import ExportInventoryThread
+        except ModuleNotFoundError as exc:
+            QMessageBox.warning(
+                self,
+                "Export Unavailable",
+                f"Excel export is not available because '{exc.name}' is missing."
+            )
+            return
         self._start_export_thread(ExportInventoryThread(export_dir=self.dir_input.text()))
 
     def _export_all(self):
-        from exports.excel_exporter_threaded import ExportAllDataThread
+        try:
+            from exports.excel_exporter_threaded import ExportAllDataThread
+        except ModuleNotFoundError as exc:
+            QMessageBox.warning(
+                self,
+                "Export Unavailable",
+                f"Excel export is not available because '{exc.name}' is missing."
+            )
+            return
         self._start_export_thread(ExportAllDataThread(export_dir=self.dir_input.text()))
 
     def _on_progress(self, val: int, msg: str):

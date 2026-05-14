@@ -492,34 +492,34 @@ Create a single .exe file for distribution using **PyInstaller** (included in de
 
 2. **Build executable using PyInstaller:**
 
-   **Option A: Using spec file (if main.spec exists):**
+   **Option A: Using spec file (recommended):**
    ```bash
-   pyinstaller main.spec
+   pyinstaller "NMIMS Clinica.spec"
    ```
 
-   **Option B: Using command line (Recommended for latest build):**
+   **Option B: Using command line (recommended if you want to avoid the spec file):**
    ```bash
-   pyinstaller --noconfirm --onedir --windowed --name "NMIMS Clinica" --icon "assets/icons/logo.png" --add-data "assets;assets" --add-data "database;database" main.py
+   pyinstaller --noconfirm --onefile --windowed --name "NMIMS Clinica" --icon "assets/icons/logo.png" --add-data "assets;assets" --add-data "database;database" main.py
    ```
 
    **Command flags explained:**
    - `--noconfirm` - Skip confirmation prompts
-   - `--onedir` - Create executable in a directory (not single file)
+   - `--onefile` - Bundle Python + dependencies into a single .exe
    - `--windowed` - Hide console window on startup
    - `--name` - Application name (shown in taskbar/shortcuts)
    - `--icon` - Path to icon file (.png or .ico)
    - `--add-data` - Include non-Python files (assets, database template)
 
 3. **Distribute:**
-   - Application .exe located in `dist/NMIMS Clinica/NMIMS Clinica.exe`
+   - Single executable located at `dist/NMIMS Clinica.exe`
    - No Python installation required on target machine
    - Database is created in user's AppData on first run
    - All required assets bundled with executable
 
 ### Build Configuration
 
-If using `main.spec` file, it controls:
-- Single-file vs. directory output
+If using `NMIMS Clinica.spec` file, it controls:
+- Single-file output
 - Icon embedding
 - Hidden imports
 - Runtime hooks
@@ -543,6 +543,10 @@ If using `main.spec` file, it controls:
 .\venv\Scripts\activate
 pip install -r requirements.txt
 ```
+
+**Error: "Failed to load Python DLL"**
+- Install the Microsoft Visual C++ Redistributable (x64)
+- Rebuild with the one-file build above and distribute the single `dist/NMIMS Clinica.exe`
 
 **Error: "clinic.db locked"**
 ```bash
