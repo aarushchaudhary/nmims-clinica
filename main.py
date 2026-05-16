@@ -2,10 +2,12 @@ import sys
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon
 from database.db_manager import initialize_db
+from database.inventory_queries import expire_medicines_stock
 from ui.main_window import MainWindow
 
 def main():
     initialize_db()  # Creates DB + tables on first run
+    expire_medicines_stock()
     app = QApplication(sys.argv)
     app.setStyle("Fusion")  # Consistent cross-platform look
     

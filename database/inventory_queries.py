@@ -128,6 +128,7 @@ def get_medicine_by_id(medicine_id: int) -> Optional[dict]:
 
 def get_all_medicines(order_by: str = "name") -> list[dict]:
     """All medicines with subtype name joined, no expiry filter."""
+    expire_medicines_stock()
     allowed = {"name", "expiry_date", "current_stock", "created_at"}
     order_by = order_by if order_by in allowed else "name"
     sql = f"""
@@ -157,6 +158,7 @@ def search_medicines(
     `query` matches against name and batch_number.
     Expiry filters are exclusive — use one at a time or combine carefully.
     """
+    expire_medicines_stock()
     conditions = []
     params = []
 
@@ -294,6 +296,28 @@ def restock_medicine(medicine_id: int, quantity_added: int) -> bool:
         conn.close()
 
 
+def expire_medicines_stock(as_of: str = None) -> int:
+    """
+    Set current_stock to 0 for expired medicines.
+    Returns number of rows updated.
+    """
+    cutoff = as_of or _today_str()
+    sql = """
+        UPDATE medicines
+        SET current_stock = 0
+        WHERE expiry_date < ? AND current_stock > 0
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.execute(sql, (cutoff,))
+        conn.commit()
+        if cursor.rowcount:
+            logger.info(f"Expired medicines stock cleared: {cursor.rowcount} rows")
+        return cursor.rowcount
+    finally:
+        conn.close()
+
+
 def delete_medicine(medicine_id: int) -> bool:
     sql = "DELETE FROM medicines WHERE id = ?"
     conn = get_connection()
@@ -356,6 +380,11 @@ def dispense_medicine(
                     WHERE id = ?
                     """,
                     (quantity, quantity, medicine_id)
+                )
+            elif new_stock is not None and new_stock < 0:
+                conn.execute(
+                    "UPDATE medicines SET current_stock = 0 WHERE id = ?",
+                    (medicine_id,)
                 )
 
         conn.commit()
@@ -566,6 +595,7 @@ def get_inventory_stats() -> dict:
         low_stock_count, total_equipment, disposal_needed_count
     }
     """
+    expire_medicines_stock()
     today = _today_str()
     threshold = _expiry_threshold(2)
 
@@ -596,6 +626,7 @@ def get_medicines_for_export(
     Full medicine data for Excel export.
     Can be filtered or return everything.
     """
+    expire_medicines_stock()
     conditions = []
     params = []
 

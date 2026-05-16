@@ -62,12 +62,14 @@ def export_consultation_pdf(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     doc = fitz.open()
-    page = doc.new_page(width=842, height=595)  # landscape A4
+    a4_width = 595
+    a4_height = 842
+    page = doc.new_page(width=a4_height, height=a4_width)  # A4 landscape
 
     margin_x = 32
     page_width = page.rect.width
     page_height = page.rect.height
-    center_x = page_width / 2
+    divider_x = page_width * 0.25
 
     regular_fontfile = _windows_font_path("segoeui.ttf")
     bold_fontfile = _windows_font_path("segoeuib.ttf") or regular_fontfile
@@ -98,20 +100,10 @@ def export_consultation_pdf(
         page.insert_text((margin_x, 74), date_value, fontfile=bold_fontfile, fontsize=12)
     else:
         page.insert_text((margin_x, 74), date_value, fontname="helv", fontsize=12)
-    _line(page, center_x, 64, center_x, page_height - 34, width=1)
-
-    # Rx symbol on right side (image)
-    if rx_icon_path.exists():
-        img_w = 64
-        img_h = 64
-        img_x1 = page_width - margin_x
-        img_x0 = img_x1 - img_w
-        img_y0 = 60
-        img_y1 = img_y0 + img_h
-        page.insert_image(fitz.Rect(img_x0, img_y0, img_x1, img_y1), filename=str(rx_icon_path))
+    _line(page, divider_x, 64, divider_x, page_height - 34, width=1)
 
     left_x = margin_x
-    right_x = center_x + 18
+    right_x = divider_x + 18
     content_top = 112
 
     if bold_fontfile:
@@ -120,6 +112,16 @@ def export_consultation_pdf(
     else:
         page.insert_text((left_x, content_top), "Complaints", fontname="helv", fontsize=14)
         page.insert_text((right_x, content_top), "Diagnosis", fontname="helv", fontsize=14)
+
+    # Rx symbol directly below the Diagnosis heading
+    if rx_icon_path.exists():
+        img_w = 60
+        img_h = 60
+        img_x0 = right_x
+        img_y0 = content_top + 18
+        img_x1 = img_x0 + img_w
+        img_y1 = img_y0 + img_h
+        page.insert_image(fitz.Rect(img_x0, img_y0, img_x1, img_y1), filename=str(rx_icon_path))
 
     investigation_y = content_top + 190
     if bold_fontfile:

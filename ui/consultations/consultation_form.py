@@ -25,7 +25,7 @@ from database.visit_queries   import (
     create_visit, update_visit, get_visit_by_id,
     get_all_categories, add_custom_category
 )
-from database.inventory_queries import get_all_medicines, dispense_medicine
+from database.inventory_queries import get_all_medicines, dispense_medicine, get_dispense_log
 
 
 VISIT_TYPES = ["Walk-in", "Scheduled", "Emergency"]
@@ -34,8 +34,7 @@ VISIT_TYPES = ["Walk-in", "Scheduled", "Emergency"]
 class ConsultationFormDialog(QDialog):
     """
     patient_id  → required (patient must exist)
-    visit_id    → optional; if provided, opens in Edit mode (not implemented
-                  in this version — extension point for future)
+    visit_id    → optional; if provided, opens in Edit mode
     """
 
     def __init__(self, patient_id: int, visit_id: int = None, parent=None):
@@ -512,6 +511,18 @@ class ConsultationFormDialog(QDialog):
         self.f_prescription.setCurrentIndex(0)
         self._on_medicine_changed()
 
+    def _get_existing_dispense_totals(self) -> dict:
+        if not self.visit_id:
+            return {}
+        rows = get_dispense_log(visit_id=self.visit_id, limit=10000, offset=0)
+        totals = {}
+        for row in rows:
+            med_id = row.get("medicine_id")
+            qty = int(row.get("quantity") or 0)
+            if med_id is not None and qty > 0:
+                totals[med_id] = totals.get(med_id, 0) + qty
+        return totals
+
     def _on_add_category(self):
         from PySide6.QtWidgets import QInputDialog
         name, ok = QInputDialog.getText(
@@ -631,6 +642,27 @@ class ConsultationFormDialog(QDialog):
         try:
             if self.is_edit:
                 update_visit(self.visit_id, **common_kwargs)
+                prev_totals = self._get_existing_dispense_totals()
+                for med, qty in selected_items:
+                    med_id = med.get("id")
+                    prev_qty = int(prev_totals.get(med_id, 0))
+                    delta = int(qty) - prev_qty
+                    if delta <= 0:
+                        continue
+
+                    stock = int(med.get("current_stock", 0))
+                    if delta > stock:
+                        QMessageBox.warning(
+                            self, "Insufficient Stock",
+                            f"Only {stock} units available for {med.get('name', 'medicine')}"
+                        )
+                        continue
+
+                    dispense_medicine(
+                        medicine_id=med_id,
+                        quantity=delta,
+                        visit_id=self.visit_id
+                    )
             else:
                 from datetime import datetime
                 chosen_date = self.f_visit_date.date().toString("yyyy-MM-dd")

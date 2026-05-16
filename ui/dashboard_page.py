@@ -4,7 +4,7 @@ dashboard_page.py
 The main active dashboard greeting the user.
 Displays critical alerts:
   - Low stock medicines
-  - Medicines expiring within 30 days
+    - Medicines expiring within 2 months
   - Expected follow-ups for today
 """
 
@@ -64,7 +64,7 @@ class DashboardWidget(QWidget):
 
         # 2. Expiring Soon Card
         self.card_expiring, self.tbl_expiring = self._create_alert_card(
-            "🔴 Expiring < 30 Days",
+            "🔴 Expiring < 2 Months",
             ["Medicine", "Batch", "Expiry"]
         )
         cards_layout.addWidget(self.card_expiring)
@@ -134,8 +134,8 @@ class DashboardWidget(QWidget):
                 self.tbl_low_stock.setItem(r, 1, item_stock)
                 self.tbl_low_stock.setItem(r, 2, QTableWidgetItem(str(m.get("minimum_stock_alert", 0))))
 
-        # 2. Expiring Soon (1 month threshold)
-        expiring = get_expiring_soon(months=1)
+        # 2. Expiring Soon (2 month threshold)
+        expiring = get_expiring_soon(months=2)
         self.tbl_expiring.setRowCount(0)
         if not expiring:
             self._set_empty_state(self.tbl_expiring)

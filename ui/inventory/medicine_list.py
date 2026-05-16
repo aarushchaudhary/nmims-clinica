@@ -19,14 +19,16 @@ from database.inventory_queries import (
     get_all_medicines, search_medicines,
     get_expiring_soon, get_expired_medicines, get_low_stock_medicines,
     delete_medicine, get_all_equipment, search_equipment,
-    delete_equipment, get_inventory_stats, get_medicine_subtypes
+    delete_equipment, get_inventory_stats, get_medicine_subtypes,
+    expire_medicines_stock
 )
 from ui.inventory.inventory_form import MedicineFormDialog, EquipmentFormDialog
 
 # ── Column definitions ────────────────────────────────────────────────────────
 
 MED_COLS    = ["ID", "Name", "Subtype", "Dosage", "Batch", "Received",
-               "Current Stock", "Min Alert", "Mfg Date", "Expiry Date", "Post-Expiry Dispensed"]
+               "Current Stock", "Consumed", "Min Alert", "Mfg Date", "Expiry Date",
+               "Post-Expiry Dispensed"]
 EQUIP_COLS  = ["ID", "Name", "Category", "Qty", "Disposal Required",
                "Purchase Date", "Last Serviced"]
 
@@ -36,10 +38,11 @@ MCOL_SUBTYPE       = 2
 MCOL_BATCH         = 4
 MCOL_RECEIVED      = 5
 MCOL_CURRENT       = 6
-MCOL_MIN_ALERT     = 7
-MCOL_MFG_DATE      = 8
-MCOL_EXPIRY        = 9
-MCOL_POST_EXPIRY   = 10
+MCOL_CONSUMED      = 7
+MCOL_MIN_ALERT     = 8
+MCOL_MFG_DATE      = 9
+MCOL_EXPIRY        = 10
+MCOL_POST_EXPIRY   = 11
 MCOL_DOSAGE        = 3
 
 ECOL_ID       = 0
@@ -93,6 +96,10 @@ class MedicineTableModel(QAbstractTableModel):
         elif col == MCOL_BATCH: val = row.get("batch_number") or "—"
         elif col == MCOL_RECEIVED: val = row.get("stock_received", 0)
         elif col == MCOL_CURRENT: val = row.get("current_stock", 0)
+        elif col == MCOL_CONSUMED:
+            received = row.get("stock_received", 0) or 0
+            current = row.get("current_stock", 0) or 0
+            val = received - current
         elif col == MCOL_MIN_ALERT: val = row.get("minimum_stock_alert", 10)
         elif col == MCOL_MFG_DATE: val = (row.get("mfg_date") or "—")[:10]
         elif col == MCOL_EXPIRY: val = (row.get("expiry_date") or "—")[:10]
@@ -458,6 +465,7 @@ class MedicineListWidget(QWidget):
             self._refresh_tab(self._modes[idx])
 
     def _refresh_all(self):
+        expire_medicines_stock()
         self._pages = {m: 0 for m in self._modes}
         for mode in self._modes:
             self._refresh_tab(mode)
