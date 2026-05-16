@@ -146,6 +146,8 @@ class ConsultationFormDialog(QDialog):
         self.f_visit_date.setStyleSheet(
             "QDateEdit { background-color: #ffffff; color: #000000; }"
         )
+        if not self.is_edit:
+            self.f_visit_date.setEnabled(False)
 
         form.addRow(self._lbl("Visit Type *"), self.f_visit_type)
         form.addRow(self._lbl("Diagnosed By *"), self.f_diagnosed_by)
