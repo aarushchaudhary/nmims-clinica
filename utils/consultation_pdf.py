@@ -51,7 +51,7 @@ def _textbox(page, rect, text, fontname="helv", fontsize=9.5, color=(0.1, 0.1, 0
 def _draw_header_footer(page, left_logo_path, right_logo_path, page_num):
     # Left logo: SVKM's NMIMS
     if left_logo_path and Path(left_logo_path).exists():
-        page.insert_image(fitz.Rect(40, 20, 180, 70), filename=str(left_logo_path))
+        page.insert_image(fitz.Rect(40, 15, 250, 94), filename=str(left_logo_path))
     else:
         _text(page, 40, 35, "SVKM'S", fontsize=10, bold=True, color=(0.725, 0.11, 0.11))
         _text(page, 40, 50, "NMIMS", fontsize=15, bold=True, color=(0.1, 0.1, 0.1))
@@ -59,7 +59,7 @@ def _draw_header_footer(page, left_logo_path, right_logo_path, page_num):
 
     # Right logo placeholder: SUNRIDGES HEALTH XI
     if right_logo_path and Path(right_logo_path).exists():
-        page.insert_image(fitz.Rect(430, 20, 550, 70), filename=str(right_logo_path))
+        page.insert_image(fitz.Rect(340, 15, 550, 103), filename=str(right_logo_path))
     else:
         _text(page, 435, 35, "Inspired Healthcare", fontsize=7.5, color=(0.4, 0.4, 0.4))
         _text(page, 435, 48, "SUNRIDGES", fontsize=12, bold=True, color=(0.1, 0.3, 0.6))
@@ -69,12 +69,12 @@ def _draw_header_footer(page, left_logo_path, right_logo_path, page_num):
     page.draw_rect(fitz.Rect(0, 825, 595, 842), color=(0.725, 0.11, 0.11), fill=(0.725, 0.11, 0.11), width=0)
 
     # Footer texts
-    _text(page, 40, 792, "SVKM's", fontsize=7.5, bold=True, color=(0.1, 0.1, 0.1))
-    _text(page, 40, 802, "Narsee Monjee Institute of Management Studies, Hyderabad", fontsize=9, bold=True, color=(0.725, 0.11, 0.11))
-    _text(page, 40, 811, "Deemed to be UNIVERSITY", fontsize=7, color=(0.3, 0.3, 0.3))
-    _textbox(page, fitz.Rect(40, 815, 555, 825), 
+    _text(page, 40, 785, "SVKM's", fontsize=9.5, bold=True, color=(0.1, 0.1, 0.1))
+    _text(page, 40, 798, "Narsee Monjee Institute of Management Studies, Hyderabad", fontsize=11.5, bold=True, color=(0.725, 0.11, 0.11))
+    _text(page, 40, 810, "Deemed to be UNIVERSITY", fontsize=8.5, color=(0.3, 0.3, 0.3))
+    _textbox(page, fitz.Rect(40, 814, 555, 825), 
               "Jadcherla Campus: Plot No.- B4, Green Industrial Park, TSIIC, Polepally SEZ, Jadcherla, Mahabubnagar District, Telangana - 509301. India. Ph: 08542350062",
-              fontsize=6.5, color=(0.4, 0.4, 0.4))
+              fontsize=8, color=(0.4, 0.4, 0.4))
 
 def export_consultation_pdf(
     output_path: str | Path,
@@ -268,8 +268,13 @@ def export_consultation_pdf(
     _text(page3, 40, 118, "Emp. Name:  " + _val_or_dots(patient.get("emp_name") or patient.get("name"), 25))
     _text(page3, 380, 118, "Emp. Code:  " + _val_or_dots(patient.get("emp_code") or patient.get("sap_id"), 15))
 
+    # Vertical line (1/4th of 595 width)
+    line_x = 149
+    _line(page3, line_x, 140, line_x, 780)
+
     # Prescription list
-    _text(page3, 40, 160, "Rx", bold=True, fontsize=20, color=(0.725, 0.11, 0.11))
+    rx_x = line_x + 10
+    _text(page3, rx_x, 160, "Rx", bold=True, fontsize=20, color=(0.1, 0.1, 0.1))
     
     prescription_text = ""
     if visit and visit.get("prescription"):
@@ -284,7 +289,7 @@ def export_consultation_pdf(
         
         y_pos = 190
         for idx, line in enumerate(lines, 1):
-            _text(page3, 55, y_pos, f"{idx}. {line}", fontsize=11)
+            _text(page3, rx_x + 15, y_pos, f"{idx}. {line}", fontsize=11)
             y_pos += 22
 
     doc.save(str(output_path))
