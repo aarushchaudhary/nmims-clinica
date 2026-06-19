@@ -549,19 +549,6 @@ class ConsultationFormDialog(QDialog):
                     f"Category '{name.strip()}' already exists."
                 )
 
-    def _export_pdf_payload(self) -> dict:
-        patient = self._patient or {}
-        return {
-            "patient_name": patient.get("name") or "—",
-            "age": patient.get("age") or "—",
-            "sex": patient.get("gender") or "—",
-            "sap_id": patient.get("sap_id") or "—",
-            "phone": patient.get("mobile") or "—",
-            "date_text": self.f_visit_date.date().toString("dd MMM yyyy"),
-            "complaints": self.f_complaint.toPlainText().strip(),
-            "diagnosis": self.f_diagnosis.toPlainText().strip(),
-        }
-
     def _on_print_pdf(self):
         try:
             from utils.consultation_pdf import export_consultation_pdf
@@ -573,8 +560,30 @@ class ConsultationFormDialog(QDialog):
             )
             return
 
-        payload = self._export_pdf_payload()
-        default_name = f"Consultation_{payload['sap_id']}_{self.f_visit_date.date().toString('yyyyMMdd')}.pdf"
+        # Prepare visit payload from form values
+        selected_items = []
+        for med_id, qty in self._selected_medicines.items():
+            med = next((m for m in self._medicines if m.get("id") == med_id), None)
+            if med and qty > 0:
+                selected_items.append((med, qty))
+
+        prescription_text = None
+        if selected_items:
+            prescription_text = "; ".join(
+                f"{med.get('name', 'Medicine')} x {qty}" for med, qty in selected_items
+            )
+
+        visit_data = {
+            "visit_date": self.f_visit_date.date().toString("yyyy-MM-dd"),
+            "chief_complaint": self.f_complaint.toPlainText().strip(),
+            "diagnosis": self.f_diagnosis.toPlainText().strip(),
+            "prescription": prescription_text,
+            "treatment": self.f_treatment.toPlainText().strip(),
+            "advise": "", # will fall back to patient-level advise if blank
+        }
+
+        sap_id = self._patient.get("sap_id") or "—"
+        default_name = f"Consultation_{sap_id}_{self.f_visit_date.date().toString('yyyyMMdd')}.pdf"
         default_path = default_name.replace("/", "_")
 
         file_path, _ = QFileDialog.getSaveFileName(
@@ -587,7 +596,11 @@ class ConsultationFormDialog(QDialog):
             return
 
         try:
-            saved_path = export_consultation_pdf(file_path, **payload)
+            saved_path = export_consultation_pdf(
+                file_path,
+                patient=self._patient,
+                visit=visit_data
+            )
             QMessageBox.information(self, "PDF Created", f"Consultation PDF saved to:\n{saved_path}")
             QDesktopServices.openUrl(QUrl.fromLocalFile(saved_path))
         except Exception as exc:

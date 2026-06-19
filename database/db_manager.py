@@ -78,15 +78,65 @@ CREATE TABLE IF NOT EXISTS schema_version (
 CREATE TABLE IF NOT EXISTS patients (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     sap_id      TEXT    UNIQUE NOT NULL,
+    clinic_reg_no TEXT,
+    day_care_reg_no TEXT,
+    opd_timing TEXT,
+    opd_reg_no TEXT,
+    employee_id TEXT,
+    emp_code TEXT,
+    emp_name TEXT,
     name        TEXT    NOT NULL,
     type        TEXT    NOT NULL CHECK(type IN ('Student', 'Staff')),
     school      TEXT,
     mobile      TEXT,
+    tel         TEXT,
     dob         TEXT,
     age         INTEGER, -- Legacy, kept for backwards compatibility
+    age_months  INTEGER,
     gender      TEXT    CHECK(gender IN ('Male', 'Female', 'Other')),
+    sex         TEXT,
     blood_group TEXT,
+    height      TEXT,
+    weight      TEXT,
     address     TEXT,
+    brought_by  TEXT,
+    relation    TEXT,
+    brought_by_name TEXT,
+    chief_complaint_1 TEXT,
+    chief_complaint_2 TEXT,
+    chief_complaint_3 TEXT,
+    chief_complaint_4 TEXT,
+    past_high_blood_pressure TEXT,
+    past_chest_pain TEXT,
+    past_shortness_of_breath TEXT,
+    past_asthma TEXT,
+    past_ulcer_peptic TEXT,
+    past_diabetes TEXT,
+    past_major_illness_surgery TEXT,
+    family_high_blood_pressure TEXT,
+    family_diabetes TEXT,
+    family_cardiac_disorder TEXT,
+    family_genetic_disorder TEXT,
+    other_relevant_history TEXT,
+    blood_pressure TEXT,
+    pulse TEXT,
+    resp_rate TEXT,
+    general_appearance TEXT,
+    eyes_right TEXT,
+    eyes_left TEXT,
+    colour_vision_right TEXT,
+    colour_vision_left TEXT,
+    ears_inspection TEXT,
+    ears_hearing TEXT,
+    cvs TEXT,
+    per_abdomen TEXT,
+    chest TEXT,
+    exam_date TEXT,
+    doctor_name TEXT,
+    diagnosis TEXT,
+    admission_referral_date TEXT,
+    advise TEXT,
+    letter_date TEXT,
     created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
@@ -307,6 +357,69 @@ MIGRATIONS = [
 ]
 
 
+PATIENT_EXTRA_COLUMNS = {
+    "clinic_reg_no": "TEXT",
+    "day_care_reg_no": "TEXT",
+    "opd_timing": "TEXT",
+    "opd_reg_no": "TEXT",
+    "employee_id": "TEXT",
+    "emp_code": "TEXT",
+    "emp_name": "TEXT",
+    "tel": "TEXT",
+    "age_months": "INTEGER",
+    "sex": "TEXT",
+    "height": "TEXT",
+    "weight": "TEXT",
+    "brought_by": "TEXT",
+    "relation": "TEXT",
+    "brought_by_name": "TEXT",
+    "chief_complaint_1": "TEXT",
+    "chief_complaint_2": "TEXT",
+    "chief_complaint_3": "TEXT",
+    "chief_complaint_4": "TEXT",
+    "past_high_blood_pressure": "TEXT",
+    "past_chest_pain": "TEXT",
+    "past_shortness_of_breath": "TEXT",
+    "past_asthma": "TEXT",
+    "past_ulcer_peptic": "TEXT",
+    "past_diabetes": "TEXT",
+    "past_major_illness_surgery": "TEXT",
+    "family_high_blood_pressure": "TEXT",
+    "family_diabetes": "TEXT",
+    "family_cardiac_disorder": "TEXT",
+    "family_genetic_disorder": "TEXT",
+    "other_relevant_history": "TEXT",
+    "blood_pressure": "TEXT",
+    "pulse": "TEXT",
+    "resp_rate": "TEXT",
+    "general_appearance": "TEXT",
+    "eyes_right": "TEXT",
+    "eyes_left": "TEXT",
+    "colour_vision_right": "TEXT",
+    "colour_vision_left": "TEXT",
+    "ears_inspection": "TEXT",
+    "ears_hearing": "TEXT",
+    "cvs": "TEXT",
+    "per_abdomen": "TEXT",
+    "chest": "TEXT",
+    "exam_date": "TEXT",
+    "doctor_name": "TEXT",
+    "diagnosis": "TEXT",
+    "admission_referral_date": "TEXT",
+    "advise": "TEXT",
+    "letter_date": "TEXT",
+}
+
+
+def _ensure_patient_extra_columns(conn: sqlite3.Connection):
+    existing = {
+        row["name"] for row in conn.execute("PRAGMA table_info(patients)").fetchall()
+    }
+    for column, col_type in PATIENT_EXTRA_COLUMNS.items():
+        if column not in existing:
+            conn.execute(f"ALTER TABLE patients ADD COLUMN {column} {col_type}")
+
+
 def _apply_migrations(conn: sqlite3.Connection):
     cursor = conn.cursor()
     cursor.execute("SELECT version FROM schema_version")
@@ -341,6 +454,7 @@ def initialize_db():
     conn = get_connection()
     try:
         conn.executescript(SCHEMA_SQL)
+        _ensure_patient_extra_columns(conn)
         _seed_defaults(conn)
         conn.commit()
         _apply_migrations(conn)

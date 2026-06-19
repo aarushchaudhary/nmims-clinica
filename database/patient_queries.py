@@ -54,24 +54,32 @@ def create_patient(
     gender: str = None,      # 'Male' | 'Female' | 'Other'
     blood_group: str = None,
     address: str = None,
+    **extra_fields,
 ) -> int:
     """
     Insert a new patient. Returns the new patient's id.
     Raises sqlite3.IntegrityError if sap_id already exists.
     """
     age = calculate_age(dob)
-    sql = """
-        INSERT INTO patients
-            (sap_id, name, type, school, mobile, dob, age, gender, blood_group, address)
-        VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """
+    fields = {
+        "sap_id": sap_id.strip(),
+        "name": name.strip(),
+        "type": patient_type,
+        "school": school,
+        "mobile": mobile,
+        "dob": dob,
+        "age": age,
+        "gender": gender,
+        "blood_group": blood_group,
+        "address": address,
+    }
+    fields.update({k: v for k, v in extra_fields.items() if v is not None})
+    columns = ", ".join(fields.keys())
+    placeholders = ", ".join("?" for _ in fields)
+    sql = f"INSERT INTO patients ({columns}) VALUES ({placeholders})"
     conn = get_connection()
     try:
-        cursor = conn.execute(sql, (
-            sap_id.strip(), name.strip(), patient_type,
-            school, mobile, dob, age, gender, blood_group, address
-        ))
+        cursor = conn.execute(sql, list(fields.values()))
         conn.commit()
         logger.info(f"Patient created: sap_id={sap_id}, id={cursor.lastrowid}")
         return cursor.lastrowid
@@ -165,9 +173,9 @@ def search_patients(
     if query:
         like = f"%{query.strip()}%"
         conditions.append(
-            "(name LIKE ? COLLATE NOCASE OR sap_id LIKE ? OR mobile LIKE ?)"
+            "(name LIKE ? COLLATE NOCASE OR sap_id LIKE ? OR employee_id LIKE ? OR mobile LIKE ? OR tel LIKE ?)"
         )
-        params.extend([like, like, like])
+        params.extend([like, like, like, like, like])
 
     if patient_type:
         conditions.append("type = ?")
@@ -245,6 +253,7 @@ def update_patient(
     gender: str = None,
     blood_group: str = None,
     address: str = None,
+    **extra_fields,
 ) -> bool:
     """
     Partial update — only non-None values are changed.
@@ -261,6 +270,7 @@ def update_patient(
     if gender      is not None: fields["gender"]       = gender
     if blood_group is not None: fields["blood_group"]  = blood_group
     if address     is not None: fields["address"]      = address
+    fields.update({k: v for k, v in extra_fields.items() if v is not None})
 
     if not fields:
         return False

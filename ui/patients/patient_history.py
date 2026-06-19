@@ -103,12 +103,12 @@ class PatientInfoCard(QFrame):
 
         # Stats
         stats = [
-            ("SAP ID",   p.get("sap_id", "—")),
+            ("SAP ID",   p.get("employee_id") or p.get("sap_id", "—")),
             ("School",   p.get("school") or "—"),
             ("Age",      str(p.get("age") or "—")),
-            ("Gender",   p.get("gender") or "—"),
+            ("Sex",      p.get("sex") or p.get("gender") or "—"),
             ("Blood",    p.get("blood_group") or "—"),
-            ("Mobile",   p.get("mobile") or "—"),
+            ("Tel.",     p.get("tel") or p.get("mobile") or "—"),
             ("Visits",   str(visit_count)),
         ]
         for label, value in stats:
@@ -421,14 +421,8 @@ class PatientHistoryWidget(QWidget):
         try:
             saved_path = export_consultation_pdf(
                 file_path,
-                patient_name=patient.get("name") or "—",
-                age=patient.get("age") or "—",
-                sex=patient.get("gender") or "—",
-                sap_id=patient.get("sap_id") or "—",
-                phone=patient.get("mobile") or "—",
-                date_text=date_text,
-                complaints=visit.get("chief_complaint") or "",
-                diagnosis=visit.get("diagnosis") or "",
+                patient=patient,
+                visit=visit,
             )
             QMessageBox.information(self, "PDF Created", f"Consultation PDF saved to:\n{saved_path}")
             QDesktopServices.openUrl(QUrl.fromLocalFile(saved_path))

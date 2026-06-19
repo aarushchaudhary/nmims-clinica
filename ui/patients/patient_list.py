@@ -3,7 +3,7 @@ patient_list.py
 ---------------
 Main patient management screen.
 Features:
-  - Live search (name / SAP ID / mobile)
+  - Live search (name / SAP ID / tel)
   - Filters: type (Student/Staff), school, gender
   - Sortable table of patients
   - Add / Edit / View History / Delete actions
@@ -30,15 +30,15 @@ from ui.patients.patient_history import PatientHistoryWidget
 
 # Column indices
 COL_ID     = 0
-COL_SAP    = 1
+COL_EMP    = 1
 COL_NAME   = 2
 COL_TYPE   = 3
 COL_SCHOOL = 4
 COL_AGE    = 5
 COL_GENDER = 6
-COL_MOBILE = 7
+COL_TEL    = 7
 
-COLUMNS = ["ID", "SAP ID", "Name", "Type", "School", "Age", "Gender", "Mobile"]
+COLUMNS = ["ID", "SAP ID", "Name", "Type", "School", "Age", "Sex", "Tel."]
 
 
 class PatientTableModel(QAbstractTableModel):
@@ -63,8 +63,12 @@ class PatientTableModel(QAbstractTableModel):
         if 0 <= index.row() < len(self._data):
             row = self._data[index.row()]
             col = index.column()
-            keys = ["id", "sap_id", "name", "type", "school", "age", "gender", "mobile"]
+            keys = ["id", "employee_id", "name", "type", "school", "age", "sex", "tel"]
             val = row.get(keys[col])
+            if keys[col] == "employee_id" and not val:
+                val = row.get("sap_id")
+            if keys[col] == "tel" and not val:
+                val = row.get("mobile")
             
             if role == Qt.DisplayRole:
                 return str(val) if val is not None else "—"
@@ -176,7 +180,7 @@ class PatientListWidget(QWidget):
         # Search
         self.search_box = QLineEdit()
         self.search_box.setObjectName("SearchBar")
-        self.search_box.setPlaceholderText("🔍  Search by name, SAP ID or mobile…")
+        self.search_box.setPlaceholderText("Search by name, SAP ID or tel.")
         self.search_box.setClearButtonEnabled(True)
         self.search_box.returnPressed.connect(self._on_search_enter)
 
@@ -225,7 +229,7 @@ class PatientListWidget(QWidget):
         hdr = self.table.horizontalHeader()
         hdr.setSectionResizeMode(COL_NAME, QHeaderView.Stretch)
         hdr.setSectionResizeMode(COL_SCHOOL, QHeaderView.Stretch)
-        for col in (COL_ID, COL_SAP, COL_TYPE, COL_AGE, COL_GENDER, COL_MOBILE):
+        for col in (COL_ID, COL_EMP, COL_TYPE, COL_AGE, COL_GENDER, COL_TEL):
             hdr.setSectionResizeMode(col, QHeaderView.ResizeToContents)
 
         self.table.setColumnHidden(COL_ID, True)
