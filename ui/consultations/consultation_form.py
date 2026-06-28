@@ -210,8 +210,8 @@ class ConsultationFormDialog(QDialog):
         med_row.addWidget(self.f_prescription_qty)
         med_row.addWidget(btn_add_med)
 
-        self.tbl_medicines = QTableWidget(0, 2)
-        self.tbl_medicines.setHorizontalHeaderLabels(["Medicine", "Qty"])
+        self.tbl_medicines = QTableWidget(0, 3)
+        self.tbl_medicines.setHorizontalHeaderLabels(["Medicine", "Expiry", "Qty"])
         self.tbl_medicines.horizontalHeader().setStretchLastSection(True)
         self.tbl_medicines.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tbl_medicines.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -450,15 +450,18 @@ class ConsultationFormDialog(QDialog):
         for med_id, qty in self._selected_medicines.items():
             med = next((m for m in self._medicines if m.get("id") == med_id), None)
             label = self._med_label(med) if med else "—"
+            expiry = (med.get("expiry_date") or "—")[:10] if med else "—"
             row = self.tbl_medicines.rowCount()
             self.tbl_medicines.insertRow(row)
 
             item_med = QTableWidgetItem(label)
             item_med.setData(Qt.UserRole, med_id)
+            item_exp = QTableWidgetItem(expiry)
             item_qty = QTableWidgetItem(str(qty))
 
             self.tbl_medicines.setItem(row, 0, item_med)
-            self.tbl_medicines.setItem(row, 1, item_qty)
+            self.tbl_medicines.setItem(row, 1, item_exp)
+            self.tbl_medicines.setItem(row, 2, item_qty)
 
     def _on_remove_selected_medicine(self):
         row = self.tbl_medicines.currentRow()
@@ -486,10 +489,12 @@ class ConsultationFormDialog(QDialog):
             parts.extend([p.strip() for p in chunk.split(";") if p.strip()])
 
         for entry in parts:
-            name = entry
+            import re
+            entry_clean = re.sub(r'\s*\(\s*Exp\s*:\s*[^\)]+\)', '', entry, flags=re.IGNORECASE)
+            name = entry_clean
             qty = 1
-            if " x " in entry:
-                name_part, qty_part = entry.split(" x ", 1)
+            if " x " in entry_clean:
+                name_part, qty_part = entry_clean.split(" x ", 1)
                 name = name_part.strip()
                 try:
                     qty = int(qty_part.strip())
@@ -570,7 +575,7 @@ class ConsultationFormDialog(QDialog):
         prescription_text = None
         if selected_items:
             prescription_text = "; ".join(
-                f"{med.get('name', 'Medicine')} x {qty}" for med, qty in selected_items
+                f"{med.get('name', 'Medicine')} x {qty} (Exp: {(med.get('expiry_date') or '—')[:10]})" for med, qty in selected_items
             )
 
         visit_data = {
@@ -635,7 +640,7 @@ class ConsultationFormDialog(QDialog):
         prescription_text = None
         if selected_items:
             prescription_text = "; ".join(
-                f"{med.get('name', 'Medicine')} x {qty}" for med, qty in selected_items
+                f"{med.get('name', 'Medicine')} x {qty} (Exp: {(med.get('expiry_date') or '—')[:10]})" for med, qty in selected_items
             )
 
         common_kwargs = dict(
