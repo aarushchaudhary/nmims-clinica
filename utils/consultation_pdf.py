@@ -90,7 +90,7 @@ def export_consultation_pdf(
     a4_height = 842
 
     left_logo_path = Path(__file__).resolve().parents[1] / "assets" / "stmelogo.png"
-    right_logo_path = Path(__file__).resolve().parents[1] / "assets" / "logo2.jpeg"
+    right_logo_path = Path(__file__).resolve().parents[1] / "assets" / "logo2.png"
 
     # ==================== PAGE 1 ====================
     page1 = doc.new_page(width=a4_width, height=a4_height)
