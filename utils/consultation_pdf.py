@@ -8,7 +8,24 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 import os
+import sys
 import fitz
+
+def _find_asset(filename: str) -> Path | None:
+    """Resolve asset paths reliably across dev environments and PyInstaller bundles."""
+    candidates = [
+        Path(__file__).resolve().parents[1] / "assets" / filename,
+        Path.cwd() / "assets" / filename,
+        Path.cwd() / filename,
+    ]
+    if getattr(sys, 'frozen', False):
+        base = Path(getattr(sys, '_MEIPASS', os.path.dirname(sys.executable)))
+        candidates.insert(0, base / "assets" / filename)
+        candidates.insert(1, base / filename)
+    for c in candidates:
+        if c.exists():
+            return c
+    return None
 
 def _line(page, x0, y0, x1, y1, color=(0.7, 0.7, 0.7), width=0.8):
     page.draw_line(fitz.Point(x0, y0), fitz.Point(x1, y1), color=color, width=width)
@@ -94,8 +111,8 @@ def export_consultation_pdf(
     a4_width = 595
     a4_height = 842
 
-    left_logo_path = Path(__file__).resolve().parents[1] / "assets" / "stmelogo.png"
-    right_logo_path = Path(__file__).resolve().parents[1] / "assets" / "logo2.png"
+    left_logo_path = _find_asset("stmelogo.png") or _find_asset("icons/logo.png")
+    right_logo_path = _find_asset("logo2.png")
 
     if only_prescription_page is None:
         patient_id = patient.get("id")

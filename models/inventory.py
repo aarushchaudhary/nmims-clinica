@@ -148,6 +148,11 @@ class Medicine:
 
     # ── Serialization ─────────────────────────────────────────────────────────
 
+    @property
+    def consumed(self) -> int:
+        """Quantity consumed since last added/received."""
+        return max(0, (self.stock_received or 0) - (self.current_stock or 0))
+
     def to_dict(self) -> dict:
         return {f.name: getattr(self, f.name) for f in fields(self)}
 
@@ -157,12 +162,10 @@ class Medicine:
             "Name":                     self.name,
             "Subtype":                  self.subtype_name or "",
             "Batch Number":             self.batch_number or "",
-            "Supplier":                 self.supplier or "",
             "Stock Received":           self.stock_received,
+            "Consumed":                 self.consumed,
             "Current Stock":            self.current_stock,
-            "Low Stock Alert At":       self.minimum_stock_alert,
             "Stock Status":             self.stock_status,
-            "Mfg Date":                 self._fmt_date(self.mfg_date),
             "Expiry Date":              self._fmt_date(self.expiry_date),
             "Expiry Status":            self.expiry_status,
             "Days To Expiry":           self.days_to_expiry if not self.is_expired else "EXPIRED",

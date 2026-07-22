@@ -6,8 +6,26 @@ Streams data dynamically in chunks.
 """
 
 import os
+import sys
+from pathlib import Path
 from datetime import date, datetime
 from typing import Optional
+
+def _find_asset(filename: str) -> Path | None:
+    """Resolve asset paths reliably across dev environments and PyInstaller bundles."""
+    candidates = [
+        Path(__file__).resolve().parents[1] / "assets" / filename,
+        Path.cwd() / "assets" / filename,
+        Path.cwd() / filename,
+    ]
+    if getattr(sys, 'frozen', False):
+        base = Path(getattr(sys, '_MEIPASS', os.path.dirname(sys.executable)))
+        candidates.insert(0, base / "assets" / filename)
+        candidates.insert(1, base / filename)
+    for c in candidates:
+        if c.exists():
+            return c
+    return None
 
 import openpyxl
 from openpyxl import Workbook
@@ -71,11 +89,22 @@ class BaseExportThread(QThread):
     def _write_title_block(self, ws, title: str, subtitle: str, col_count: int):
         ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=col_count)
         ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=col_count)
-        t_cell = ws.cell(row=1, column=1, value=title)
+        t_cell = ws.cell(row=1, column=1, value=f"   {title}")
         t_cell.font, t_cell.alignment, t_cell.fill = TITLE_FONT, LEFT_ALIGN, PatternFill("solid", fgColor="E0F2FE")
-        s_cell = ws.cell(row=2, column=1, value=subtitle)
+        s_cell = ws.cell(row=2, column=1, value=f"   {subtitle}")
         s_cell.font, s_cell.alignment = SUBTITLE_FONT, LEFT_ALIGN
-        ws.row_dimensions[1].height, ws.row_dimensions[2].height = 24, 16
+        ws.row_dimensions[1].height, ws.row_dimensions[2].height = 28, 18
+
+        try:
+            from openpyxl.drawing.image import Image as OpenPyXLImage
+            logo_path = _find_asset("stmelogo.png") or _find_asset("icons/logo.png")
+            if logo_path and logo_path.exists():
+                img = OpenPyXLImage(str(logo_path))
+                img.height = 36
+                img.width = 110
+                ws.add_image(img, "A1")
+        except Exception:
+            pass
 
     def _write_headers(self, ws, headers, row, fill):
         for col, header in enumerate(headers, start=1):
@@ -252,6 +281,7 @@ class ExportVisitsThread(BaseExportThread):
 
 class ExportInventoryThread(BaseExportThread):
     def run(self):
+        conn = None
         try:
             self.progress.emit(0, "Fetching inventory data...")
             wb = Workbook()
@@ -260,8 +290,8 @@ class ExportInventoryThread(BaseExportThread):
 
             headers = [
                 "ID", "Name", "Subtype", "Batch Number", "Stock Received",
-                "Current Stock", "Min Stock Alert", "Mfg Date", "Expiry Date",
-                "Dispensed After Expiry", "Supplier", "Notes", "Created At"
+                "Consumed", "Current Stock", "Expiry Date",
+                "Dispensed After Expiry", "Notes", "Created At"
             ]
             
             self._write_title_block(ws, "Inventory - Medicines", f"Generated: {datetime.now().strftime('%d %b %Y %H:%M')}", len(headers))
@@ -279,11 +309,14 @@ class ExportInventoryThread(BaseExportThread):
             processed = 0
             
             for m in medicines:
+                rec = int(m.get("stock_received") or 0)
+                cur = int(m.get("current_stock") or 0)
+                consumed = max(0, rec - cur)
                 cells = [
                     m.get("id"), m.get("name"), m.get("subtype"), m.get("batch_number"),
-                    m.get("stock_received"), m.get("current_stock"), m.get("minimum_stock_alert"),
-                    m.get("mfg_date"), m.get("expiry_date"), m.get("dispensed_after_expiry"),
-                    m.get("supplier"), m.get("notes"), m.get("created_at")
+                    m.get("stock_received"), consumed, m.get("current_stock"),
+                    m.get("expiry_date"), m.get("dispensed_after_expiry"),
+                    m.get("notes"), m.get("created_at")
                 ]
                 for col, val in enumerate(cells, start=1):
                     cell = ws.cell(row=current_row, column=col, value=val)
@@ -406,8 +439,8 @@ class ExportAllDataThread(BaseExportThread):
             ws_med = wb.create_sheet(title="Medicines")
             headers_med = [
                 "ID", "Name", "Subtype", "Batch Number", "Stock Received",
-                "Current Stock", "Min Stock Alert", "Mfg Date", "Expiry Date",
-                "Dispensed After Expiry", "Supplier", "Notes", "Created At"
+                "Consumed", "Current Stock", "Expiry Date",
+                "Dispensed After Expiry", "Notes", "Created At"
             ]
             self._write_title_block(ws_med, "Inventory - Medicines", f"Generated: {datetime.now().strftime('%d %b %Y %H:%M')}", len(headers_med))
             self._write_headers(ws_med, headers_med, row=3, fill=PatternFill("solid", fgColor="D97706"))
@@ -417,11 +450,14 @@ class ExportAllDataThread(BaseExportThread):
             medicines = get_medicines_for_export()
             current_row = 4
             for m in medicines:
+                rec = int(m.get("stock_received") or 0)
+                cur = int(m.get("current_stock") or 0)
+                consumed = max(0, rec - cur)
                 cells = [
                     m.get("id"), m.get("name"), m.get("subtype"), m.get("batch_number"),
-                    m.get("stock_received"), m.get("current_stock"), m.get("minimum_stock_alert"),
-                    m.get("mfg_date"), m.get("expiry_date"), m.get("dispensed_after_expiry"),
-                    m.get("supplier"), m.get("notes"), m.get("created_at")
+                    m.get("stock_received"), consumed, m.get("current_stock"),
+                    m.get("expiry_date"), m.get("dispensed_after_expiry"),
+                    m.get("notes"), m.get("created_at")
                 ]
                 for col, val in enumerate(cells, start=1):
                     cell = ws_med.cell(row=current_row, column=col, value=val)
