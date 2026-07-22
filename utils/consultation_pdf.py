@@ -80,8 +80,13 @@ def export_consultation_pdf(
     output_path: str | Path,
     patient: dict,
     visit: dict = None,
+    only_prescription_page: bool | None = None,
 ) -> str:
-    """Create a 3-page consultation PDF matching the physical formats."""
+    """
+    Create consultation PDF.
+    - First prescription / 1st visit: 3-page format (Case Paper + Physical Exam + Prescription).
+    - Subsequent prescriptions / 2nd+ visits: 1-page format (3rd page / Prescription Letterhead only).
+    """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -92,201 +97,215 @@ def export_consultation_pdf(
     left_logo_path = Path(__file__).resolve().parents[1] / "assets" / "stmelogo.png"
     right_logo_path = Path(__file__).resolve().parents[1] / "assets" / "logo2.png"
 
-    # ==================== PAGE 1 ====================
-    page1 = doc.new_page(width=a4_width, height=a4_height)
-    _draw_header_footer(page1, left_logo_path, right_logo_path, 1)
+    if only_prescription_page is None:
+        patient_id = patient.get("id")
+        if patient_id:
+            try:
+                from database.visit_queries import get_visits_by_patient
+                patient_visits = get_visits_by_patient(patient_id)
+                patient_visits = sorted(patient_visits, key=lambda v: v.get("id") or 0)
+                if len(patient_visits) <= 1:
+                    # First prescription ever for this patient
+                    only_prescription_page = False
+                elif visit and visit.get("id"):
+                    # Check if this visit is the earliest visit recorded for the patient
+                    first_visit_id = patient_visits[0].get("id")
+                    only_prescription_page = (visit.get("id") != first_visit_id)
+                else:
+                    # Subsequent prescription
+                    only_prescription_page = True
+            except Exception:
+                only_prescription_page = False
+        else:
+            only_prescription_page = False
 
-    # Clinic reg details
-    _text(page1, 40, 95, f"CLINIC REG. NO.: {_val_or_dots(patient.get('clinic_reg_no'), 25)}")
-    _text(page1, 330, 95, f"DAY CARE REG. NO.: {_val_or_dots(patient.get('day_care_reg_no'), 25)}")
+    if not only_prescription_page:
+        # ==================== PAGE 1 ====================
+        page1 = doc.new_page(width=a4_width, height=a4_height)
+        _draw_header_footer(page1, left_logo_path, right_logo_path, 1)
 
-    # Notice
-    _text(page1, 40, 112, "NOTICE: Preserve this paper carefully and bring for your further visits. Hospital does not have duplicate copy of this Case Paper", fontsize=7.5, bold=True, color=(0.2, 0.2, 0.2))
-    _text(page1, 40, 124, "Suggestion to store as records as Efiling", fontsize=7.5, color=(0.4, 0.4, 0.4))
+        # Clinic reg details
+        _text(page1, 40, 95, f"CLINIC REG. NO.: {_val_or_dots(patient.get('clinic_reg_no'), 25)}")
+        _text(page1, 330, 95, f"DAY CARE REG. NO.: {_val_or_dots(patient.get('day_care_reg_no'), 25)}")
 
-    # OPD Grid Table
-    _rect(page1, fitz.Rect(40, 140, 555, 300))
-    # Horizontal lines
-    for y in [160, 180, 200, 220, 240, 260, 280]:
-        _line(page1, 40, y, 555, y)
-    # Vertical dividers
-    _line(page1, 300, 140, 300, 160) # row 1
-    _line(page1, 140, 200, 140, 220) # row 4
-    _line(page1, 290, 200, 290, 220) # row 4
-    _line(page1, 410, 200, 410, 220) # row 4
-    _line(page1, 300, 260, 300, 280) # row 7
+        # Notice
+        _text(page1, 40, 112, "NOTICE: Preserve this paper carefully and bring for your further visits. Hospital does not have duplicate copy of this Case Paper", fontsize=7.5, bold=True, color=(0.2, 0.2, 0.2))
+        _text(page1, 40, 124, "Suggestion to store as records as Efiling", fontsize=7.5, color=(0.4, 0.4, 0.4))
 
-    # Populate OPD Table values
-    _text(page1, 45, 153, "OPD TIMING:  " + _val_or_dots(patient.get("opd_timing"), 15))
-    _text(page1, 305, 153, "O.P.D. REG. NO :  " + _val_or_dots(patient.get("opd_reg_no"), 15))
-    _text(page1, 45, 173, "NAME:  " + _val_or_dots(patient.get("name"), 45), bold=True)
-    _text(page1, 45, 193, "EMPLOYEE ID — SAP - ID :  " + _val_or_dots(patient.get("sap_id"), 40), bold=True)
+        # OPD Grid Table
+        _rect(page1, fitz.Rect(40, 140, 555, 300))
+        # Horizontal lines
+        for y in [160, 180, 200, 220, 240, 260, 280]:
+            _line(page1, 40, y, 555, y)
+        # Vertical dividers
+        _line(page1, 300, 140, 300, 160) # row 1
+        _line(page1, 140, 200, 140, 220) # row 4
+        _line(page1, 290, 200, 290, 220) # row 4
+        _line(page1, 410, 200, 410, 220) # row 4
+        _line(page1, 300, 260, 300, 280) # row 7
 
-    _text(page1, 45, 213, "SEX: M / F:  " + _val_or_dots(patient.get("sex") or patient.get("gender"), 5))
-    _text(page1, 145, 213, f"AGE:  {_val_or_dots(patient.get('age'), 4)} YRS.  {_val_or_dots(patient.get('age_months'), 4)} MTHS")
-    _text(page1, 295, 213, "HEIGHT:  " + _val_or_dots(patient.get("height"), 8))
-    _text(page1, 415, 213, "WEIGHT Kg/ lb:  " + _val_or_dots(patient.get("weight"), 8))
+        # Populate OPD Table values
+        _text(page1, 45, 153, "OPD TIMING:  " + _val_or_dots(patient.get("opd_timing"), 15))
+        _text(page1, 305, 153, "O.P.D. REG. NO :  " + _val_or_dots(patient.get("opd_reg_no"), 15))
+        _text(page1, 45, 173, "NAME:  " + _val_or_dots(patient.get("name"), 45), bold=True)
+        _text(page1, 45, 193, "EMPLOYEE ID — SAP - ID :  " + _val_or_dots(patient.get("sap_id"), 40), bold=True)
 
-    _text(page1, 45, 233, "ADDRESS:  " + _val_or_dots(patient.get("address"), 60))
-    _text(page1, 45, 253, "TEL.:  " + _val_or_dots(patient.get("tel") or patient.get("mobile"), 20))
+        _text(page1, 45, 213, "SEX: M / F:  " + _val_or_dots(patient.get("sex") or patient.get("gender"), 5))
+        _text(page1, 145, 213, f"AGE:  {_val_or_dots(patient.get('age'), 4)} YRS.  {_val_or_dots(patient.get('age_months'), 4)} MTHS")
+        _text(page1, 295, 213, "HEIGHT:  " + _val_or_dots(patient.get("height"), 8))
+        _text(page1, 415, 213, "WEIGHT Kg/ lb:  " + _val_or_dots(patient.get("weight"), 8))
 
-    _text(page1, 45, 273, "BROUGHT BY:  " + _val_or_dots(patient.get("brought_by"), 20))
-    _text(page1, 305, 273, "RELATION:  " + _val_or_dots(patient.get("relation"), 15))
-    _text(page1, 45, 293, "NAME:  " + _val_or_dots(patient.get("brought_by_name"), 45))
+        _text(page1, 45, 233, "ADDRESS:  " + _val_or_dots(patient.get("address"), 60))
+        _text(page1, 45, 253, "TEL.:  " + _val_or_dots(patient.get("tel") or patient.get("mobile"), 20))
 
-    # Chief Complaints
-    _text(page1, 40, 318, "CHIEF COMPLAINTS & HISTORY", bold=True, fontsize=11)
-    complaints = [
-        patient.get("chief_complaint_1"),
-        patient.get("chief_complaint_2"),
-        patient.get("chief_complaint_3"),
-        patient.get("chief_complaint_4"),
-    ]
-    if not any(complaints) and visit and visit.get("chief_complaint"):
-        lines = _wrap_lines(visit.get("chief_complaint"), 60)
-        for i in range(min(len(lines), 4)):
-            complaints[i] = lines[i]
+        _text(page1, 45, 273, "BROUGHT BY:  " + _val_or_dots(patient.get("brought_by"), 20))
+        _text(page1, 305, 273, "RELATION:  " + _val_or_dots(patient.get("relation"), 15))
+        _text(page1, 45, 293, "NAME:  " + _val_or_dots(patient.get("brought_by_name"), 45))
 
-    _text(page1, 40, 336, "1)  " + _val_or_dots(complaints[0], 65))
-    _text(page1, 40, 356, "2)  " + _val_or_dots(complaints[1], 65))
-    _text(page1, 40, 376, "3)  " + _val_or_dots(complaints[2], 65))
-    _text(page1, 40, 396, "4)  " + _val_or_dots(complaints[3], 65))
+        # Chief Complaints
+        _text(page1, 40, 318, "CHIEF COMPLAINTS & HISTORY", bold=True, fontsize=11)
+        complaints = [
+            patient.get("chief_complaint_1"),
+            patient.get("chief_complaint_2"),
+            patient.get("chief_complaint_3"),
+            patient.get("chief_complaint_4"),
+        ]
+        if not any(complaints) and visit and visit.get("chief_complaint"):
+            lines = _wrap_lines(visit.get("chief_complaint"), 60)
+            for i in range(min(len(lines), 4)):
+                complaints[i] = lines[i]
 
-    # Past History
-    _text(page1, 40, 422, "ANY PAST / HISTORY OF:-(if yes, fill details)", bold=True, fontsize=11)
-    _rect(page1, fitz.Rect(40, 432, 555, 512))
-    for y in [452, 472, 492]:
-        _line(page1, 40, y, 555, y)
-    _line(page1, 300, 432, 300, 492)
+        _text(page1, 40, 336, "1)  " + _val_or_dots(complaints[0], 65))
+        _text(page1, 40, 356, "2)  " + _val_or_dots(complaints[1], 65))
+        _text(page1, 40, 376, "3)  " + _val_or_dots(complaints[2], 65))
+        _text(page1, 40, 396, "4)  " + _val_or_dots(complaints[3], 65))
 
-    _text(page1, 45, 446, "HIGH BLOOD PRESSURE:  " + _val_or_dots(patient.get("past_high_blood_pressure"), 12))
-    _text(page1, 305, 446, "CHEST.PAIN:  " + _val_or_dots(patient.get("past_chest_pain"), 12))
-    _text(page1, 45, 466, "SHORTNESS OF BREATH:  " + _val_or_dots(patient.get("past_shortness_of_breath"), 12))
-    _text(page1, 305, 466, "ASTHAMA:  " + _val_or_dots(patient.get("past_asthma"), 12))
-    _text(page1, 45, 486, "ULCER (PEPTIC):  " + _val_or_dots(patient.get("past_ulcer_peptic"), 12))
-    _text(page1, 305, 486, "DIABETES:  " + _val_or_dots(patient.get("past_diabetes"), 12))
-    _text(page1, 45, 506, "ANY MAJOR ILLNESS/SURGERY:  " + _val_or_dots(patient.get("past_major_illness_surgery"), 40))
+        # Past History
+        _text(page1, 40, 422, "ANY PAST / HISTORY OF:-(if yes, fill details)", bold=True, fontsize=11)
+        _rect(page1, fitz.Rect(40, 432, 555, 512))
+        for y in [452, 472, 492]:
+            _line(page1, 40, y, 555, y)
+        _line(page1, 300, 432, 300, 492)
 
-    # Family History
-    _text(page1, 40, 534, "FAMILY HISTORY OF:-", bold=True, fontsize=11)
-    _rect(page1, fitz.Rect(40, 544, 555, 604))
-    for y in [564, 584]:
-        _line(page1, 40, y, 555, y)
-    _line(page1, 300, 544, 300, 584)
+        _text(page1, 45, 446, "HIGH BLOOD PRESSURE:  " + _val_or_dots(patient.get("past_high_blood_pressure"), 12))
+        _text(page1, 305, 446, "CHEST.PAIN:  " + _val_or_dots(patient.get("past_chest_pain"), 12))
+        _text(page1, 45, 466, "SHORTNESS OF BREATH:  " + _val_or_dots(patient.get("past_shortness_of_breath"), 12))
+        _text(page1, 305, 466, "ASTHAMA:  " + _val_or_dots(patient.get("past_asthma"), 12))
+        _text(page1, 45, 486, "ULCER (PEPTIC):  " + _val_or_dots(patient.get("past_ulcer_peptic"), 12))
+        _text(page1, 305, 486, "DIABETES:  " + _val_or_dots(patient.get("past_diabetes"), 12))
+        _text(page1, 45, 506, "ANY MAJOR ILLNESS/SURGERY:  " + _val_or_dots(patient.get("past_major_illness_surgery"), 40))
 
-    _text(page1, 45, 558, "HIGH BLOOD PRESSURE:  " + _val_or_dots(patient.get("family_high_blood_pressure"), 12))
-    _text(page1, 305, 558, "DIABETES:  " + _val_or_dots(patient.get("family_diabetes"), 12))
-    _text(page1, 45, 578, "CARDIAC DISORDER:  " + _val_or_dots(patient.get("family_cardiac_disorder"), 12))
-    _text(page1, 305, 578, "GENETIC DISORDER, if known,:  " + _val_or_dots(patient.get("family_genetic_disorder"), 12))
-    _text(page1, 45, 598, "OTHER RELEVANT HISTORY:  " + _val_or_dots(patient.get("other_relevant_history"), 40))
+        # Family History
+        _text(page1, 40, 534, "FAMILY HISTORY OF:-", bold=True, fontsize=11)
+        _rect(page1, fitz.Rect(40, 544, 555, 604))
+        for y in [564, 584]:
+            _line(page1, 40, y, 555, y)
+        _line(page1, 300, 544, 300, 584)
 
+        _text(page1, 45, 558, "HIGH BLOOD PRESSURE:  " + _val_or_dots(patient.get("family_high_blood_pressure"), 12))
+        _text(page1, 305, 558, "DIABETES:  " + _val_or_dots(patient.get("family_diabetes"), 12))
+        _text(page1, 45, 578, "CARDIAC DISORDER:  " + _val_or_dots(patient.get("family_cardiac_disorder"), 12))
+        _text(page1, 305, 578, "GENETIC DISORDER, if known,:  " + _val_or_dots(patient.get("family_genetic_disorder"), 12))
+        _text(page1, 45, 598, "OTHER RELEVANT HISTORY:  " + _val_or_dots(patient.get("other_relevant_history"), 40))
 
-    # ==================== PAGE 2 ====================
-    page2 = doc.new_page(width=a4_width, height=a4_height)
-    _draw_header_footer(page2, left_logo_path, right_logo_path, 2)
+        # ==================== PAGE 2 ====================
+        page2 = doc.new_page(width=a4_width, height=a4_height)
+        _draw_header_footer(page2, left_logo_path, right_logo_path, 2)
 
-    # Title block
-    page2.draw_rect(fitz.Rect(197, 95, 397, 115), color=(0.1, 0.1, 0.1), fill=(0.1, 0.1, 0.1), width=0)
-    _text(page2, 238, 109, "PHYSICAL EXAMINATION", bold=True, fontsize=10, color=(1, 1, 1))
+        # Title block
+        page2.draw_rect(fitz.Rect(197, 95, 397, 115), color=(0.1, 0.1, 0.1), fill=(0.1, 0.1, 0.1), width=0)
+        _text(page2, 238, 109, "PHYSICAL EXAMINATION", bold=True, fontsize=10, color=(1, 1, 1))
 
-    # BP & Vitals
-    _text(page2, 40, 134, "BLOOD PRESSURE mm.of Hg:  " + _val_or_dots(patient.get("blood_pressure"), 20))
-    _text(page2, 40, 154, "PULSE PM/:  " + _val_or_dots(patient.get("pulse"), 15))
-    _text(page2, 280, 154, "RESP RATE PM:  " + _val_or_dots(patient.get("resp_rate"), 15))
-    _text(page2, 40, 174, "GENERAL APPERANCE:  " + _val_or_dots(patient.get("general_appearance"), 40))
+        # BP & Vitals
+        _text(page2, 40, 134, "BLOOD PRESSURE mm.of Hg:  " + _val_or_dots(patient.get("blood_pressure"), 20))
+        _text(page2, 40, 154, "PULSE PM/:  " + _val_or_dots(patient.get("pulse"), 15))
+        _text(page2, 280, 154, "RESP RATE PM:  " + _val_or_dots(patient.get("resp_rate"), 15))
+        _text(page2, 40, 174, "GENERAL APPERANCE:  " + _val_or_dots(patient.get("general_appearance"), 40))
 
-    # Exam Grid Table
-    _rect(page2, fitz.Rect(40, 195, 555, 335))
-    # Horizontal lines (spacing = 23.33 pt)
-    h_y = [195, 218, 241, 264, 287, 310, 335]
-    for y in h_y[1:-1]:
-        _line(page2, 40, y, 555, y)
-    # Vertical lines
-    _line(page2, 120, 195, 120, 218)
-    _line(page2, 200, 195, 200, 218)
-    _line(page2, 280, 195, 280, 218)
-    _line(page2, 380, 195, 380, 218)
-    _line(page2, 440, 195, 440, 218)
-    _line(page2, 120, 241, 120, 264) # inspection hearing divider
+        # Exam Grid Table
+        _rect(page2, fitz.Rect(40, 195, 555, 335))
+        h_y = [195, 218, 241, 264, 287, 310, 335]
+        for y in h_y[1:-1]:
+            _line(page2, 40, y, 555, y)
+        _line(page2, 120, 195, 120, 218)
+        _line(page2, 200, 195, 200, 218)
+        _line(page2, 280, 195, 280, 218)
+        _line(page2, 380, 195, 380, 218)
+        _line(page2, 440, 195, 440, 218)
+        _line(page2, 120, 241, 120, 264)
 
-    # Grid texts
-    _text(page2, 45, 210, "EYES:")
-    _text(page2, 125, 210, "RIGHT: " + _val_or_dots(patient.get("eyes_right"), 8))
-    _text(page2, 205, 210, "LEFT: " + _val_or_dots(patient.get("eyes_left"), 8))
-    _text(page2, 285, 210, "Colour Vision")
-    _text(page2, 385, 210, "Right: " + _val_or_dots(patient.get("colour_vision_right"), 5))
-    _text(page2, 445, 210, "Left: " + _val_or_dots(patient.get("colour_vision_left"), 5))
+        _text(page2, 45, 210, "EYES:")
+        _text(page2, 125, 210, "RIGHT: " + _val_or_dots(patient.get("eyes_right"), 8))
+        _text(page2, 205, 210, "LEFT: " + _val_or_dots(patient.get("eyes_left"), 8))
+        _text(page2, 285, 210, "Colour Vision")
+        _text(page2, 385, 210, "Right: " + _val_or_dots(patient.get("colour_vision_right"), 5))
+        _text(page2, 445, 210, "Left: " + _val_or_dots(patient.get("colour_vision_left"), 5))
 
-    _text(page2, 45, 233, "EARS:")
-    _text(page2, 45, 256, "Inspection: " + _val_or_dots(patient.get("ears_inspection"), 8))
-    _text(page2, 125, 256, "Hearing: " + _val_or_dots(patient.get("ears_hearing"), 30))
+        _text(page2, 45, 233, "EARS:")
+        _text(page2, 45, 256, "Inspection: " + _val_or_dots(patient.get("ears_inspection"), 8))
+        _text(page2, 125, 256, "Hearing: " + _val_or_dots(patient.get("ears_hearing"), 30))
 
-    _text(page2, 45, 279, "CVS:  " + _val_or_dots(patient.get("cvs"), 45))
-    _text(page2, 45, 302, "Per Abdomen:  " + _val_or_dots(patient.get("per_abdomen"), 45))
-    _text(page2, 45, 325, "Chest:  " + _val_or_dots(patient.get("chest"), 45))
+        _text(page2, 45, 279, "CVS:  " + _val_or_dots(patient.get("cvs"), 45))
+        _text(page2, 45, 302, "Per Abdomen:  " + _val_or_dots(patient.get("per_abdomen"), 45))
+        _text(page2, 45, 325, "Chest:  " + _val_or_dots(patient.get("chest"), 45))
 
-    # Doctor and outcomes
-    _text(page2, 40, 355, "DATE:  " + _val_or_dots(patient.get("exam_date"), 15))
-    _text(page2, 280, 355, "NAME OF DOCTOR:  " + _val_or_dots(patient.get("doctor_name"), 25))
+        _text(page2, 40, 355, "DATE:  " + _val_or_dots(patient.get("exam_date"), 15))
+        _text(page2, 280, 355, "NAME OF DOCTOR:  " + _val_or_dots(patient.get("doctor_name"), 25))
 
-    p_diag = visit.get("diagnosis") if (visit and visit.get("diagnosis")) else patient.get("diagnosis")
-    _text(page2, 40, 385, "DIAGNOSIS:  " + _val_or_dots(p_diag, 50))
+        p_diag = visit.get("diagnosis") if (visit and visit.get("diagnosis")) else patient.get("diagnosis")
+        _text(page2, 40, 385, "DIAGNOSIS:  " + _val_or_dots(p_diag, 50))
 
-    p_ref = visit.get("referral") if (visit and visit.get("referral")) else patient.get("admission_referral_date")
-    _text(page2, 40, 415, "ADMISSION referral? DATE:  " + _val_or_dots(p_ref, 40))
+        p_ref = visit.get("referral") if (visit and visit.get("referral")) else patient.get("admission_referral_date")
+        _text(page2, 40, 415, "ADMISSION referral? DATE:  " + _val_or_dots(p_ref, 40))
 
-    # Advise Box
-    _text(page2, 40, 445, "ADVISE:", bold=True)
-    _rect(page2, fitz.Rect(40, 458, 555, 775))
+        _text(page2, 40, 445, "ADVISE:", bold=True)
+        _rect(page2, fitz.Rect(40, 458, 555, 775))
 
-    advise_text = ""
-    if visit and (visit.get("treatment") or visit.get("advise")):
-        treatment = _safe_text(visit.get("treatment"))
-        advise = _safe_text(visit.get("advise"))
-        parts = [p for p in [treatment, advise] if p]
-        advise_text = "\n\n".join(parts)
-    else:
-        advise_text = _safe_text(patient.get("advise"))
+        advise_text = ""
+        if visit and (visit.get("treatment") or visit.get("advise")):
+            treatment = _safe_text(visit.get("treatment"))
+            advise = _safe_text(visit.get("advise"))
+            parts = [p for p in [treatment, advise] if p]
+            advise_text = "\n\n".join(parts)
+        else:
+            advise_text = _safe_text(patient.get("advise"))
 
-    if advise_text:
-        _textbox(page2, fitz.Rect(48, 466, 547, 765), advise_text, fontsize=9.5)
+        if advise_text:
+            _textbox(page2, fitz.Rect(48, 466, 547, 765), advise_text, fontsize=9.5)
 
-
-    # ==================== PAGE 3 ====================
+    # ==================== PAGE 3 (Prescription Letterhead) ====================
     page3 = doc.new_page(width=a4_width, height=a4_height)
-    _draw_header_footer(page3, left_logo_path, right_logo_path, 3)
+    _draw_header_footer(page3, left_logo_path, right_logo_path, 1 if only_prescription_page else 3)
 
-    # Emp Name & Code
     p_date = visit.get("visit_date")[:10] if (visit and visit.get("visit_date")) else patient.get("letter_date")
     if p_date:
         try:
-            # Format date if YYYY-MM-DD
             p_date = datetime.strptime(p_date, "%Y-%m-%d").strftime("%d %b %Y")
         except ValueError:
             pass
+    else:
+        p_date = datetime.now().strftime("%d %b %Y")
     _text(page3, 380, 95, "Date:  " + _val_or_dots(p_date, 15))
     _text(page3, 40, 118, "Emp. Name:  " + _val_or_dots(patient.get("emp_name") or patient.get("name"), 25))
     _text(page3, 380, 118, "Emp. Code:  " + _val_or_dots(patient.get("emp_code") or patient.get("sap_id"), 15))
 
-    # Vertical line (1/4th of 595 width)
     line_x = 149
     _line(page3, line_x, 140, line_x, 780)
 
-    # Prescription list
     rx_x = line_x + 10
     _text(page3, rx_x, 160, "Rx", bold=True, fontsize=20, color=(0.1, 0.1, 0.1))
-    
+
     prescription_text = ""
     if visit and visit.get("prescription"):
         prescription_text = visit.get("prescription")
-    
+
     if prescription_text:
         lines = []
         for chunk in prescription_text.split(";"):
             clean_chunk = chunk.strip()
             if clean_chunk:
                 lines.append(clean_chunk)
-        
+
         y_pos = 190
         for idx, line in enumerate(lines, 1):
             _text(page3, rx_x + 15, y_pos, f"{idx}. {line}", fontsize=11)

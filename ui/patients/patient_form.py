@@ -86,6 +86,90 @@ DATE_FIELDS = {
 }
 
 
+class TypeToggleWidget(QWidget):
+    """Segmented toggle control for Student vs Staff."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
+        self.btn_student = QPushButton("Student")
+        self.btn_staff = QPushButton("Staff")
+
+        for btn in (self.btn_student, self.btn_staff):
+            btn.setCheckable(True)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setFixedHeight(34)
+
+        self.btn_student.clicked.connect(lambda: self.setValue("Student"))
+        self.btn_staff.clicked.connect(lambda: self.setValue("Staff"))
+
+        layout.addWidget(self.btn_student, stretch=1)
+        layout.addWidget(self.btn_staff, stretch=1)
+
+        self.setValue("Student")
+
+    def currentText(self) -> str:
+        return "Student" if self.btn_student.isChecked() else "Staff"
+
+    def setCurrentText(self, val: str):
+        self.setValue(val)
+
+    def setValue(self, val: str):
+        val_str = str(val).strip().capitalize() if val else "Student"
+        is_staff = (val_str == "Staff")
+        self.btn_staff.setChecked(is_staff)
+        self.btn_student.setChecked(not is_staff)
+        self._update_styles()
+
+    def _update_styles(self):
+        if self.btn_student.isChecked():
+            self.btn_student.setStyleSheet("""
+                QPushButton {
+                    background-color: #0d9488;
+                    color: #ffffff;
+                    font-weight: bold;
+                    border: 1px solid #0d9488;
+                    border-radius: 6px;
+                }
+            """)
+            self.btn_staff.setStyleSheet("""
+                QPushButton {
+                    background-color: #ffffff;
+                    color: #64748b;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 6px;
+                }
+                QPushButton:hover {
+                    background-color: #f8fafc;
+                    color: #1e293b;
+                }
+            """)
+        else:
+            self.btn_staff.setStyleSheet("""
+                QPushButton {
+                    background-color: #7c3aed;
+                    color: #ffffff;
+                    font-weight: bold;
+                    border: 1px solid #7c3aed;
+                    border-radius: 6px;
+                }
+            """)
+            self.btn_student.setStyleSheet("""
+                QPushButton {
+                    background-color: #ffffff;
+                    color: #64748b;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 6px;
+                }
+                QPushButton:hover {
+                    background-color: #f8fafc;
+                    color: #1e293b;
+                }
+            """)
+
+
 class PatientFormDialog(QDialog):
     """
     Pass patient_id=None  -> Add New Patient mode
@@ -97,7 +181,7 @@ class PatientFormDialog(QDialog):
         self.patient_id = patient_id
         self.is_edit = patient_id is not None
         self._patient = {}
-        self.fields: dict[str, QLineEdit | QTextEdit | QDateEdit | StyledComboBox] = {}
+        self.fields: dict[str, QLineEdit | QTextEdit | QDateEdit | StyledComboBox | TypeToggleWidget] = {}
 
         self.setObjectName("PatientFormDialog")
         self.setWindowTitle("Edit Patient" if self.is_edit else "Register New Patient")
@@ -176,10 +260,22 @@ class PatientFormDialog(QDialog):
         self._add_grid_field(grid, "name", 2, 0, required=True)
         self._add_grid_field(grid, "employee_id", 2, 1, required=True)
 
+        self.fields["patient_type"] = TypeToggleWidget()
+        wrap_type = QWidget()
+        form_type = QFormLayout(wrap_type)
+        form_type.setContentsMargins(0, 0, 0, 0)
+        form_type.setLabelAlignment(Qt.AlignLeft)
+        form_type.addRow(self._lbl("Patient Type *"), self.fields["patient_type"])
+        grid.addWidget(wrap_type, 3, 0)
+
         self.fields["sex"] = StyledComboBox()
         self.fields["sex"].addItems(["", "M", "F"])
-        grid.addWidget(self._lbl("Sex (M/F)"), 3, 0)
-        grid.addWidget(self.fields["sex"], 3, 1)
+        wrap_sex = QWidget()
+        form_sex = QFormLayout(wrap_sex)
+        form_sex.setContentsMargins(0, 0, 0, 0)
+        form_sex.setLabelAlignment(Qt.AlignLeft)
+        form_sex.addRow(self._lbl("Sex (M/F)"), self.fields["sex"])
+        grid.addWidget(wrap_sex, 3, 1)
 
         self._add_grid_field(grid, "age", 4, 0)
         self._add_grid_field(grid, "age_months", 4, 1)
@@ -310,6 +406,8 @@ class PatientFormDialog(QDialog):
             return widget.date().toString("yyyy-MM-dd")
         if isinstance(widget, StyledComboBox):
             return widget.currentText().strip()
+        if hasattr(widget, "currentText"):
+            return widget.currentText().strip()
         return widget.text().strip()
 
     def _set_field_text(self, key: str, value):
@@ -326,13 +424,23 @@ class PatientFormDialog(QDialog):
         elif isinstance(widget, StyledComboBox):
             idx = widget.findText(text)
             widget.setCurrentIndex(max(0, idx))
+        elif hasattr(widget, "setCurrentText"):
+            widget.setCurrentText(text)
         else:
             widget.setText(text)
 
     def _populate_fields(self):
         p = self._patient
+        today_iso = QDate.currentDate().toString("yyyy-MM-dd")
+
         for key in self.fields:
-            self._set_field_text(key, p.get(key))
+            val = p.get(key)
+            if key == "patient_type" and val is None:
+                val = p.get("type") or "Student"
+            elif key in DATE_FIELDS:
+                # All prescription & case paper date fields automatically fetch the current date
+                val = today_iso
+            self._set_field_text(key, val)
 
         if not p.get("employee_id"):
             self._set_field_text("employee_id", p.get("sap_id"))
@@ -348,6 +456,7 @@ class PatientFormDialog(QDialog):
         errors = []
         employee_id = self._field_text("employee_id")
         name = self._field_text("name")
+        ptype = self._field_text("patient_type")
 
         self.fields["employee_id"].setStyleSheet("")
         self.fields["name"].setStyleSheet("")
@@ -362,6 +471,9 @@ class PatientFormDialog(QDialog):
         if not name:
             errors.append("Patient name is required.")
             self.fields["name"].setStyleSheet("border: 1.5px solid #dc2626;")
+
+        if ptype not in ("Student", "Staff"):
+            errors.append("Patient Type must be either Student or Staff.")
 
         if errors:
             QMessageBox.warning(
@@ -378,6 +490,7 @@ class PatientFormDialog(QDialog):
 
         employee_id = payload.get("employee_id") or ""
         name = payload.get("name") or ""
+        patient_type = payload.get("patient_type") or "Student"
         sex = payload.get("sex") or None
         gender = {"M": "Male", "F": "Female"}.get(sex)
 
@@ -394,7 +507,7 @@ class PatientFormDialog(QDialog):
         payload["dob"] = None
         payload["blood_group"] = None
         payload["school"] = None
-        payload["patient_type"] = "Staff"
+        payload["patient_type"] = patient_type
         return payload
 
     @staticmethod
@@ -433,3 +546,4 @@ class PatientFormDialog(QDialog):
             return
 
         self.accept()
+
