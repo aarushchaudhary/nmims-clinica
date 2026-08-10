@@ -156,6 +156,7 @@ def export_consultation_pdf(
             _line(page1, 40, y, 555, y)
         # Vertical dividers
         _line(page1, 300, 140, 300, 160) # row 1
+        _line(page1, 300, 180, 300, 200) # row 3
         _line(page1, 140, 200, 140, 220) # row 4
         _line(page1, 290, 200, 290, 220) # row 4
         _line(page1, 410, 200, 410, 220) # row 4
@@ -165,7 +166,13 @@ def export_consultation_pdf(
         _text(page1, 45, 153, "OPD TIMING:  " + _val_or_dots(patient.get("opd_timing"), 15))
         _text(page1, 305, 153, "O.P.D. REG. NO :  " + _val_or_dots(patient.get("opd_reg_no"), 15))
         _text(page1, 45, 173, "NAME:  " + _val_or_dots(patient.get("name"), 45), bold=True)
-        _text(page1, 45, 193, "EMPLOYEE ID — SAP - ID :  " + _val_or_dots(patient.get("sap_id"), 40), bold=True)
+        _text(page1, 45, 193, "EMPLOYEE ID — SAP - ID :  " + _val_or_dots(patient.get("sap_id"), 20), bold=True)
+        p_type = patient.get("type") or patient.get("patient_type") or "Student"
+        school_label = "SCHOOL:" if p_type == "Student" else "DEPT:"
+        school_val = patient.get("school") or ""
+        if p_type == "Student" and patient.get("year"):
+            school_val += f" ({patient.get('year')} Yr)"
+        _text(page1, 305, 193, f"{school_label}  " + _val_or_dots(school_val, 18), bold=True)
 
         _text(page1, 45, 213, "SEX: M / F:  " + _val_or_dots(patient.get("sex") or patient.get("gender"), 5))
         _text(page1, 145, 213, f"AGE:  {_val_or_dots(patient.get('age'), 4)} YRS.  {_val_or_dots(patient.get('age_months'), 4)} MTHS")
@@ -213,7 +220,9 @@ def export_consultation_pdf(
         _text(page1, 45, 506, "ANY MAJOR ILLNESS/SURGERY:  " + _val_or_dots(patient.get("past_major_illness_surgery"), 40))
 
         # Family History
-        _text(page1, 40, 534, "FAMILY HISTORY OF:-", bold=True, fontsize=11)
+        fam_rel = patient.get("family_relation")
+        fam_header = f"FAMILY HISTORY OF ({fam_rel}):-" if fam_rel and fam_rel != "Nill" else "FAMILY HISTORY OF:-"
+        _text(page1, 40, 534, fam_header, bold=True, fontsize=11)
         _rect(page1, fitz.Rect(40, 544, 555, 604))
         for y in [564, 584]:
             _line(page1, 40, y, 555, y)
@@ -305,6 +314,13 @@ def export_consultation_pdf(
     _text(page3, 380, 95, "Date:  " + _val_or_dots(p_date, 15))
     _text(page3, 40, 118, "Emp. Name:  " + _val_or_dots(patient.get("emp_name") or patient.get("name"), 25))
     _text(page3, 380, 118, "Emp. Code:  " + _val_or_dots(patient.get("emp_code") or patient.get("sap_id"), 15))
+
+    p_type = patient.get("type") or patient.get("patient_type") or "Student"
+    school_lbl = "School:  " if p_type == "Student" else "Dept:  "
+    school_v = patient.get("school") or ""
+    if p_type == "Student" and patient.get("year"):
+        school_v += f" ({patient.get('year')} Yr)"
+    _text(page3, 40, 134, school_lbl + _val_or_dots(school_v, 20))
 
     line_x = 149
     _line(page3, line_x, 140, line_x, 780)

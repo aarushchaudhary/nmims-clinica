@@ -408,6 +408,10 @@ PATIENT_EXTRA_COLUMNS = {
     "admission_referral_date": "TEXT",
     "advise": "TEXT",
     "letter_date": "TEXT",
+    "has_past_history": "TEXT",
+    "has_family_history": "TEXT",
+    "family_relation": "TEXT",
+    "year": "TEXT",
 }
 
 

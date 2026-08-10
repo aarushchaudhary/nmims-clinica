@@ -20,7 +20,7 @@ from typing import Optional
 VALID_TYPES   = {"Student", "Staff"}
 VALID_GENDERS = {"Male", "Female", "Other"}
 VALID_BLOOD   = {"A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"}
-VALID_SCHOOLS = {"STME", "SPTM", "SOL", "SOC", "SBM", "OTHER"}
+VALID_SCHOOLS = {"STME", "SPTM", "SOL", "SOC", "SBM", "SVKMs", "HK worker", "Security", "Canteen", "Project", "Others", "OTHER"}
 
 
 @dataclass
@@ -33,6 +33,7 @@ class Patient:
     # ── Optional fields ───────────────────────────────────────────────────────
     id: Optional[int]         = None
     school: Optional[str]     = None
+    year: Optional[str]       = None
     mobile: Optional[str]     = None
     age: Optional[int]        = None
     gender: Optional[str]     = None    # 'Male' | 'Female' | 'Other'

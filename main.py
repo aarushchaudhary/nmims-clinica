@@ -1,4 +1,5 @@
 import sys
+import os
 import subprocess
 import importlib.util
 
@@ -34,22 +35,47 @@ if not is_frozen:
             print("Please run manually: pip install -r requirements.txt", file=sys.stderr)
             sys.exit(1)
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtGui import QIcon
 from database.db_manager import initialize_db
 from database.inventory_queries import expire_medicines_stock
 from ui.main_window import MainWindow
 
+def verify_system_requirements():
+    """Verify runtime environment, directories, and assets."""
+    # Ensure assets directory exists
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    assets_dir = os.path.join(base_dir, "assets")
+    if not os.path.exists(assets_dir):
+        os.makedirs(assets_dir, exist_ok=True)
+
 def main():
-    initialize_db()  # Creates DB + tables on first run
-    expire_medicines_stock()
     app = QApplication(sys.argv)
     app.setStyle("Fusion")  # Consistent cross-platform look
-    
-    app.setWindowIcon(QIcon("assets/icons/logo.png"))
-    
+
+    try:
+        verify_system_requirements()
+        initialize_db()  # Creates DB + tables on first run
+        expire_medicines_stock()
+    except Exception as exc:
+        QMessageBox.critical(
+            None,
+            "NMIMS Clinica — Startup Error",
+            f"Failed to initialize application requirements:\n{exc}"
+        )
+
+    # Set Application & Window Icons
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    icon_path = os.path.join(base_dir, "assets", "icons", "logo.png")
+    if not os.path.exists(icon_path):
+        icon_path = os.path.join(base_dir, "assets", "stmelogo.png")
+
+    if os.path.exists(icon_path):
+        app.setWindowIcon(QIcon(icon_path))
+
     window = MainWindow()
-    window.setWindowIcon(QIcon("assets/icons/logo.png"))
+    if os.path.exists(icon_path):
+        window.setWindowIcon(QIcon(icon_path))
     window.show()
     sys.exit(app.exec())
 

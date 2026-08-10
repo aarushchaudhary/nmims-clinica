@@ -102,14 +102,20 @@ class PatientInfoCard(QFrame):
         root.addStretch()
 
         # Stats
+        ptype = p.get("type") or p.get("patient_type") or "Student"
+        school_dept_lbl = "Dept" if ptype == "Staff" else "School"
+        school_val = p.get("school") or "—"
+        if ptype == "Student" and p.get("year"):
+            school_val += f" ({p.get('year')})"
+
         stats = [
-            ("SAP ID",   p.get("employee_id") or p.get("sap_id", "—")),
-            ("School",   p.get("school") or "—"),
-            ("Age",      str(p.get("age") or "—")),
-            ("Sex",      p.get("sex") or p.get("gender") or "—"),
-            ("Blood",    p.get("blood_group") or "—"),
-            ("Tel.",     p.get("tel") or p.get("mobile") or "—"),
-            ("Visits",   str(visit_count)),
+            ("SAP ID",          p.get("employee_id") or p.get("sap_id", "—")),
+            (school_dept_lbl,   school_val),
+            ("Age",             str(p.get("age") or "—")),
+            ("Sex",             p.get("sex") or p.get("gender") or "—"),
+            ("Blood",           p.get("blood_group") or "—"),
+            ("Tel.",            p.get("tel") or p.get("mobile") or "—"),
+            ("Visits",          str(visit_count)),
         ]
         for label, value in stats:
             col = QVBoxLayout()
