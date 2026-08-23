@@ -115,26 +115,7 @@ def export_consultation_pdf(
     right_logo_path = _find_asset("logo2.png")
 
     if only_prescription_page is None:
-        patient_id = patient.get("id")
-        if patient_id:
-            try:
-                from database.visit_queries import get_visits_by_patient
-                patient_visits = get_visits_by_patient(patient_id)
-                patient_visits = sorted(patient_visits, key=lambda v: v.get("id") or 0)
-                if len(patient_visits) <= 1:
-                    # First prescription ever for this patient
-                    only_prescription_page = False
-                elif visit and visit.get("id"):
-                    # Check if this visit is the earliest visit recorded for the patient
-                    first_visit_id = patient_visits[0].get("id")
-                    only_prescription_page = (visit.get("id") != first_visit_id)
-                else:
-                    # Subsequent prescription
-                    only_prescription_page = True
-            except Exception:
-                only_prescription_page = False
-        else:
-            only_prescription_page = False
+        only_prescription_page = True
 
     if not only_prescription_page:
         # ==================== PAGE 1 ====================
@@ -311,22 +292,58 @@ def export_consultation_pdf(
             pass
     else:
         p_date = datetime.now().strftime("%d %b %Y")
-    _text(page3, 380, 95, "Date:  " + _val_or_dots(p_date, 15))
-    _text(page3, 40, 118, "Emp. Name:  " + _val_or_dots(patient.get("emp_name") or patient.get("name"), 25))
-    _text(page3, 380, 118, "Emp. Code:  " + _val_or_dots(patient.get("emp_code") or patient.get("sap_id"), 15))
+
+    # Extract Patient Details
+    p_name = patient.get("emp_name") or patient.get("name")
+    p_sap_id = patient.get("sap_id") or patient.get("emp_code")
+
+    age_val = patient.get("age")
+    if age_val is None and patient.get("dob"):
+        try:
+            from database.patient_queries import calculate_age
+            age_val = calculate_age(patient.get("dob"))
+        except Exception:
+            pass
+
+    age_str = ""
+    if age_val is not None and str(age_val).strip():
+        age_str = f"{age_val} Yrs"
+        if patient.get("age_months"):
+            age_str += f" {patient.get('age_months')} Mths"
+
+    sex_str = patient.get("sex") or patient.get("gender") or ""
+
+    weight_val = patient.get("weight")
+    weight_str = ""
+    if weight_val is not None and str(weight_val).strip():
+        w_raw = str(weight_val).strip()
+        if any(unit in w_raw.lower() for unit in ["kg", "lb"]):
+            weight_str = w_raw
+        else:
+            weight_str = f"{w_raw} Kg"
 
     p_type = patient.get("type") or patient.get("patient_type") or "Student"
     school_lbl = "School:  " if p_type == "Student" else "Dept:  "
     school_v = patient.get("school") or ""
     if p_type == "Student" and patient.get("year"):
         school_v += f" ({patient.get('year')} Yr)"
-    _text(page3, 40, 134, school_lbl + _val_or_dots(school_v, 20))
+
+    # Draw Header (Left & Right)
+    # Right column
+    _text(page3, 360, 95, "Date:  " + _val_or_dots(p_date, 15))
+    _text(page3, 360, 112, "Age:  " + _val_or_dots(age_str, 8) + "    Sex:  " + _val_or_dots(sex_str, 6))
+    _text(page3, 360, 127, "Weight:  " + _val_or_dots(weight_str, 12))
+
+    # Left column
+    _text(page3, 40, 112, "Emp. Name:  " + _val_or_dots(p_name, 25))
+    _text(page3, 40, 127, "SAP ID:  " + _val_or_dots(p_sap_id, 18))
+    _text(page3, 40, 142, school_lbl + _val_or_dots(school_v, 20))
 
     line_x = 149
-    _line(page3, line_x, 140, line_x, 780)
+    _line(page3, line_x, 152, line_x, 780)
 
     rx_x = line_x + 10
-    _text(page3, rx_x, 160, "Rx", bold=True, fontsize=20, color=(0.1, 0.1, 0.1))
+    _text(page3, rx_x, 172, "Rx", bold=True, fontsize=20, color=(0.1, 0.1, 0.1))
 
     prescription_text = ""
     if visit and visit.get("prescription"):
@@ -339,7 +356,7 @@ def export_consultation_pdf(
             if clean_chunk:
                 lines.append(clean_chunk)
 
-        y_pos = 190
+        y_pos = 202
         for idx, line in enumerate(lines, 1):
             _text(page3, rx_x + 15, y_pos, f"{idx}. {line}", fontsize=11)
             y_pos += 22

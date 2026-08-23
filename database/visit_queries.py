@@ -347,41 +347,43 @@ def search_visits(
 #  UPDATE
 # ─────────────────────────────────────────────────────────────────────────────
 
+_UNSET = object()
+
 def update_visit(
     visit_id: int,
-    visit_type: str = None,
-    chief_complaint: str = None,
-    diagnosis: str = None,
-    category_id: int = None,
-    investigations: str = None,
-    treatment: str = None,
-    prescription: str = None,
-    referral: str = None,
-    rest_days: int = None,
-    medical_leave: bool = None,
-    ambulance_used: bool = None,
-    dressing: bool = None,
-    diagnosed_by: str = None,
-    follow_up_date: str = None,
-    notes: str = None,
+    visit_type: str = _UNSET,
+    chief_complaint: str = _UNSET,
+    diagnosis: str = _UNSET,
+    category_id: int = _UNSET,
+    investigations: str = _UNSET,
+    treatment: str = _UNSET,
+    prescription: str = _UNSET,
+    referral: str = _UNSET,
+    rest_days: int = _UNSET,
+    medical_leave: bool = _UNSET,
+    ambulance_used: bool = _UNSET,
+    dressing: bool = _UNSET,
+    diagnosed_by: str = _UNSET,
+    follow_up_date: str = _UNSET,
+    notes: str = _UNSET,
 ) -> bool:
     """Partial update of a visit. Returns True if row was modified."""
     fields = {}
-    if visit_type      is not None: fields["visit_type"]      = visit_type
-    if chief_complaint is not None: fields["chief_complaint"] = chief_complaint
-    if diagnosis       is not None: fields["diagnosis"]       = diagnosis
-    if category_id     is not None: fields["category_id"]     = category_id
-    if investigations  is not None: fields["investigations"]  = investigations
-    if treatment       is not None: fields["treatment"]       = treatment
-    if prescription    is not None: fields["prescription"]    = prescription
-    if referral        is not None: fields["referral"]        = referral
-    if rest_days       is not None: fields["rest_days"]       = rest_days
-    if medical_leave   is not None: fields["medical_leave"]   = 1 if medical_leave else 0
-    if ambulance_used  is not None: fields["ambulance_used"]  = 1 if ambulance_used else 0
-    if dressing        is not None: fields["dressing"]        = 1 if dressing else 0
-    if diagnosed_by    is not None: fields["diagnosed_by"]    = diagnosed_by
-    if follow_up_date  is not None: fields["follow_up_date"]  = follow_up_date
-    if notes           is not None: fields["notes"]           = notes
+    if visit_type      is not _UNSET: fields["visit_type"]      = visit_type
+    if chief_complaint is not _UNSET: fields["chief_complaint"] = chief_complaint
+    if diagnosis       is not _UNSET: fields["diagnosis"]       = diagnosis
+    if category_id     is not _UNSET: fields["category_id"]     = category_id
+    if investigations  is not _UNSET: fields["investigations"]  = investigations
+    if treatment       is not _UNSET: fields["treatment"]       = treatment
+    if prescription    is not _UNSET: fields["prescription"]    = prescription
+    if referral        is not _UNSET: fields["referral"]        = referral
+    if rest_days       is not _UNSET: fields["rest_days"]       = rest_days
+    if medical_leave   is not _UNSET: fields["medical_leave"]   = 1 if medical_leave else 0
+    if ambulance_used  is not _UNSET: fields["ambulance_used"]  = 1 if ambulance_used else 0
+    if dressing        is not _UNSET: fields["dressing"]        = 1 if dressing else 0
+    if diagnosed_by    is not _UNSET: fields["diagnosed_by"]    = diagnosed_by
+    if follow_up_date  is not _UNSET: fields["follow_up_date"]  = follow_up_date
+    if notes           is not _UNSET: fields["notes"]           = notes
 
     if not fields:
         return False
