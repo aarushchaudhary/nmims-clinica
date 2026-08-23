@@ -238,7 +238,7 @@ CREATE INDEX IF NOT EXISTS idx_medicines_subtype_id  ON medicines(subtype_id);
 CREATE TABLE IF NOT EXISTS medicine_dispenses (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     medicine_id     INTEGER NOT NULL REFERENCES medicines(id),
-    visit_id        INTEGER REFERENCES visits(id),
+    visit_id        INTEGER REFERENCES visits(id) ON DELETE CASCADE,
     quantity        INTEGER NOT NULL CHECK(quantity > 0),
     dispensed_at    TEXT    NOT NULL DEFAULT (datetime('now')),
     dispensed_by    TEXT,

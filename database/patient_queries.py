@@ -295,33 +295,43 @@ def update_patient(
 def delete_patient(patient_id: int) -> bool:
     """
     Hard-delete a patient.
-    Cascades to their visits (ON DELETE CASCADE defined in schema).
+    Cascades to their visits and associated medicine dispenses.
     Returns True if a row was deleted.
     """
-    sql = "DELETE FROM patients WHERE id = ?"
     conn = get_connection()
     try:
-        cursor = conn.execute(sql, (patient_id,))
+        # Delete medicine dispenses linked to patient's visits
+        conn.execute(
+            """
+            DELETE FROM medicine_dispenses
+            WHERE visit_id IN (SELECT id FROM visits WHERE patient_id = ?)
+            """,
+            (patient_id,)
+        )
+        # Delete visits for this patient
+        conn.execute("DELETE FROM visits WHERE patient_id = ?", (patient_id,))
+        # Delete patient record
+        cursor = conn.execute("DELETE FROM patients WHERE id = ?", (patient_id,))
         conn.commit()
         logger.info(f"Patient deleted: id={patient_id}")
         return cursor.rowcount > 0
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to delete patient id={patient_id}: {e}")
+        raise
     finally:
         conn.close()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  STATS (for dashboard / reports)
-# ─────────────────────────────────────────────────────────────────────────────
-
 def get_patient_stats() -> dict:
     """
-    Returns summary counts useful for a dashboard widget.
+    Returns summary counts useful for patient widgets.
     {
-        total, students, staff,
-        male, female, other_gender
+        total, students, staff, follow_up_cases,
+        male, female
     }
     """
-    sql = """
+    sql_patients = """
         SELECT
             COUNT(*)                                AS total,
             SUM(CASE WHEN type = 'Student' THEN 1 ELSE 0 END) AS students,
@@ -330,9 +340,17 @@ def get_patient_stats() -> dict:
             SUM(CASE WHEN gender = 'Female' THEN 1 ELSE 0 END) AS female
         FROM patients
     """
+    sql_followups = """
+        SELECT COUNT(*) AS follow_up_cases
+        FROM visits
+        WHERE follow_up_date IS NOT NULL AND TRIM(follow_up_date) != ''
+    """
     conn = get_connection()
     try:
-        row = conn.execute(sql).fetchone()
-        return _row_to_dict(row)
+        row_p = conn.execute(sql_patients).fetchone()
+        row_f = conn.execute(sql_followups).fetchone()
+        res = _row_to_dict(row_p)
+        res["follow_up_cases"] = row_f["follow_up_cases"] if (row_f and row_f["follow_up_cases"]) else 0
+        return res
     finally:
         conn.close()

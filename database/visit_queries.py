@@ -400,13 +400,17 @@ def update_visit(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def delete_visit(visit_id: int) -> bool:
-    sql = "DELETE FROM visits WHERE id = ?"
     conn = get_connection()
     try:
-        cursor = conn.execute(sql, (visit_id,))
+        conn.execute("DELETE FROM medicine_dispenses WHERE visit_id = ?", (visit_id,))
+        cursor = conn.execute("DELETE FROM visits WHERE id = ?", (visit_id,))
         conn.commit()
         logger.info(f"Visit deleted: id={visit_id}")
         return cursor.rowcount > 0
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to delete visit id={visit_id}: {e}")
+        raise
     finally:
         conn.close()
 

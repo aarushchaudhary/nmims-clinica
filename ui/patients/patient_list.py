@@ -144,13 +144,14 @@ class PatientListWidget(QWidget):
         h.setContentsMargins(16, 10, 16, 10)
         h.setSpacing(32)
 
-        self._stat_total    = self._stat_label("Total", "0")
-        self._stat_students = self._stat_label("Students", "0")
-        self._stat_staff    = self._stat_label("Staff", "0")
-        self._stat_shown    = self._stat_label("Showing", "0")
+        self._stat_total     = self._stat_label("Total", "0")
+        self._stat_students  = self._stat_label("Students", "0")
+        self._stat_staff     = self._stat_label("Staff", "0")
+        self._stat_followup  = self._stat_label("Follow Up Cases", "0")
+        self._stat_shown     = self._stat_label("Showing", "0")
 
         for w in (self._stat_total, self._stat_students,
-                  self._stat_staff, self._stat_shown):
+                  self._stat_staff, self._stat_followup, self._stat_shown):
             h.addWidget(w)
         h.addStretch()
         return self._stats_frame
@@ -166,8 +167,9 @@ class PatientListWidget(QWidget):
         lbl_title.setStyleSheet("font-size:11px; color:#64748b;")
         vb.addWidget(lbl_val)
         vb.addWidget(lbl_title)
-        # Store reference by title so we can update later
-        setattr(self, f"_stat_val_{title.lower()}", lbl_val)
+        # Store reference by sanitized title so we can update later
+        attr_key = title.lower().replace(" ", "_")
+        setattr(self, f"_stat_val_{attr_key}", lbl_val)
         return w
 
     def _build_filter_row(self) -> QWidget:
@@ -319,14 +321,11 @@ class PatientListWidget(QWidget):
         stats = get_patient_stats()
         shown = len(self._all_patients)
 
-        getattr(self, "_stat_val_total",    None) and \
-            self._stat_val_total.setText(str(stats.get("total", 0)))
-        getattr(self, "_stat_val_students", None) and \
-            self._stat_val_students.setText(str(stats.get("students", 0)))
-        getattr(self, "_stat_val_staff",    None) and \
-            self._stat_val_staff.setText(str(stats.get("staff", 0)))
-        getattr(self, "_stat_val_showing",  None) and \
-            self._stat_val_showing.setText(str(shown))
+        getattr(self, "_stat_val_total",           None) and self._stat_val_total.setText(str(stats.get("total", 0)))
+        getattr(self, "_stat_val_students",        None) and self._stat_val_students.setText(str(stats.get("students", 0)))
+        getattr(self, "_stat_val_staff",           None) and self._stat_val_staff.setText(str(stats.get("staff", 0)))
+        getattr(self, "_stat_val_follow_up_cases", None) and self._stat_val_follow_up_cases.setText(str(stats.get("follow_up_cases", 0)))
+        getattr(self, "_stat_val_showing",         None) and self._stat_val_showing.setText(str(shown))
 
 
     def cleanup(self):
@@ -394,11 +393,10 @@ class PatientListWidget(QWidget):
         pid = self._get_selected_id()
         if pid is None:
             return
-        # Replace table view with history widget inside the same page
-        # Or open a new dialog — here we open as a dialog for simplicity
         from ui.patients.patient_history import PatientHistoryDialog
         dlg = PatientHistoryDialog(patient_id=pid, parent=self)
         dlg.exec()
+        self._refresh()
 
     def _on_new_consultation(self):
         pid = self._get_selected_id()
@@ -407,6 +405,7 @@ class PatientListWidget(QWidget):
         from ui.consultations.consultation_form import ConsultationFormDialog
         dlg = ConsultationFormDialog(patient_id=pid, parent=self)
         if dlg.exec():
+            self._refresh()
             mw = self.window()
             if hasattr(mw, "show_status"):
                 mw.show_status("✅  Consultation recorded.")
