@@ -94,6 +94,7 @@ def create_visit(
     rest_days: int = 0,
     medical_leave: bool = False,
     ambulance_used: bool = False,
+    dressing: bool = False,
     diagnosed_by: str = "Doctor",
     follow_up_date: str = None,        # ISO string: 'YYYY-MM-DD'
     notes: str = None,
@@ -107,13 +108,13 @@ def create_visit(
             patient_id, visit_type, visit_date,
             chief_complaint, diagnosis, category_id,
             investigations, treatment, prescription,
-            referral, rest_days, medical_leave, ambulance_used,
+            referral, rest_days, medical_leave, ambulance_used, dressing,
             diagnosed_by, follow_up_date, notes
         ) VALUES (
             ?, ?, COALESCE(?, datetime('now')),
             ?, ?, ?,
             ?, ?, ?,
-            ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
             ?, ?, ?
         )
     """
@@ -126,6 +127,7 @@ def create_visit(
             referral, rest_days,
             1 if medical_leave else 0,
             1 if ambulance_used else 0,
+            1 if dressing else 0,
             diagnosed_by, follow_up_date, notes
         ))
         conn.commit()
@@ -358,6 +360,7 @@ def update_visit(
     rest_days: int = None,
     medical_leave: bool = None,
     ambulance_used: bool = None,
+    dressing: bool = None,
     diagnosed_by: str = None,
     follow_up_date: str = None,
     notes: str = None,
@@ -375,6 +378,7 @@ def update_visit(
     if rest_days       is not None: fields["rest_days"]       = rest_days
     if medical_leave   is not None: fields["medical_leave"]   = 1 if medical_leave else 0
     if ambulance_used  is not None: fields["ambulance_used"]  = 1 if ambulance_used else 0
+    if dressing        is not None: fields["dressing"]        = 1 if dressing else 0
     if diagnosed_by    is not None: fields["diagnosed_by"]    = diagnosed_by
     if follow_up_date  is not None: fields["follow_up_date"]  = follow_up_date
     if notes           is not None: fields["notes"]           = notes

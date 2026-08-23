@@ -327,7 +327,7 @@ def get_patient_stats() -> dict:
     """
     Returns summary counts useful for patient widgets.
     {
-        total, students, staff, follow_up_cases,
+        total, students, staff, follow_up_cases, dressing_cases,
         male, female
     }
     """
@@ -345,12 +345,19 @@ def get_patient_stats() -> dict:
         FROM visits
         WHERE follow_up_date IS NOT NULL AND TRIM(follow_up_date) != ''
     """
+    sql_dressing = """
+        SELECT COUNT(*) AS dressing_cases
+        FROM visits
+        WHERE dressing = 1 OR diagnosis = 'Dressing' OR treatment LIKE '%Dressing%' OR prescription LIKE '%Dressing%'
+    """
     conn = get_connection()
     try:
         row_p = conn.execute(sql_patients).fetchone()
         row_f = conn.execute(sql_followups).fetchone()
+        row_d = conn.execute(sql_dressing).fetchone()
         res = _row_to_dict(row_p)
         res["follow_up_cases"] = row_f["follow_up_cases"] if (row_f and row_f["follow_up_cases"]) else 0
+        res["dressing_cases"] = row_d["dressing_cases"] if (row_d and row_d["dressing_cases"]) else 0
         return res
     finally:
         conn.close()

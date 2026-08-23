@@ -148,10 +148,11 @@ class PatientListWidget(QWidget):
         self._stat_students  = self._stat_label("Students", "0")
         self._stat_staff     = self._stat_label("Staff", "0")
         self._stat_followup  = self._stat_label("Follow Up Cases", "0")
+        self._stat_dressing  = self._stat_label("Dressing Cases", "0")
         self._stat_shown     = self._stat_label("Showing", "0")
 
-        for w in (self._stat_total, self._stat_students,
-                  self._stat_staff, self._stat_followup, self._stat_shown):
+        for w in (self._stat_total, self._stat_students, self._stat_staff,
+                  self._stat_followup, self._stat_dressing, self._stat_shown):
             h.addWidget(w)
         h.addStretch()
         return self._stats_frame
@@ -325,6 +326,7 @@ class PatientListWidget(QWidget):
         getattr(self, "_stat_val_students",        None) and self._stat_val_students.setText(str(stats.get("students", 0)))
         getattr(self, "_stat_val_staff",           None) and self._stat_val_staff.setText(str(stats.get("staff", 0)))
         getattr(self, "_stat_val_follow_up_cases", None) and self._stat_val_follow_up_cases.setText(str(stats.get("follow_up_cases", 0)))
+        getattr(self, "_stat_val_dressing_cases",  None) and self._stat_val_dressing_cases.setText(str(stats.get("dressing_cases", 0)))
         getattr(self, "_stat_val_showing",         None) and self._stat_val_showing.setText(str(shown))
 
 

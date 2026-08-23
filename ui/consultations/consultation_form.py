@@ -283,10 +283,13 @@ class ConsultationFormDialog(QDialog):
 
         # Checkboxes row
         chk_row = QHBoxLayout()
+        self.chk_dressing  = QCheckBox("Dressing Required 🩹")
         self.chk_med_leave = QCheckBox("Medical Leave Issued")
         self.chk_ambulance = QCheckBox("Ambulance Used 🚑")
+        chk_row.addWidget(self.chk_dressing)
+        chk_row.addSpacing(16)
         chk_row.addWidget(self.chk_med_leave)
-        chk_row.addSpacing(24)
+        chk_row.addSpacing(16)
         chk_row.addWidget(self.chk_ambulance)
         chk_row.addStretch()
         grid.addWidget(self._lbl("Flags"), 3, 0, Qt.AlignRight)
@@ -387,6 +390,7 @@ class ConsultationFormDialog(QDialog):
         # Outcomes
         self.f_referral.setText(v.get("referral") or "")
         self.f_rest_days.setValue(int(v.get("rest_days") or 0))
+        self.chk_dressing.setChecked(bool(v.get("dressing")) or (v.get("diagnosis") == "Dressing"))
         self.chk_med_leave.setChecked(bool(v.get("medical_leave")))
         self.chk_ambulance.setChecked(bool(v.get("ambulance_used")))
 
@@ -687,6 +691,7 @@ class ConsultationFormDialog(QDialog):
             rest_days        = self.f_rest_days.value(),
             medical_leave    = self.chk_med_leave.isChecked(),
             ambulance_used   = self.chk_ambulance.isChecked(),
+            dressing         = self.chk_dressing.isChecked() or (diag_text == "Dressing"),
             diagnosed_by     = self.f_diagnosed_by.currentData(),
             follow_up_date   = follow_up,
             notes            = self.f_notes.toPlainText().strip() or None,

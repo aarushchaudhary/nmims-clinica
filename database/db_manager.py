@@ -181,6 +181,7 @@ CREATE TABLE IF NOT EXISTS visits (
     rest_days           INTEGER DEFAULT 0,
     medical_leave       INTEGER NOT NULL DEFAULT 0 CHECK(medical_leave IN (0, 1)),
     ambulance_used      INTEGER NOT NULL DEFAULT 0 CHECK(ambulance_used IN (0, 1)),
+    dressing            INTEGER NOT NULL DEFAULT 0 CHECK(dressing IN (0, 1)),
     
     diagnosed_by        TEXT NOT NULL DEFAULT 'Doctor' CHECK(diagnosed_by IN ('Doctor', 'Nurse')),
 
@@ -430,6 +431,13 @@ def _ensure_patient_extra_columns(conn: sqlite3.Connection):
         if column not in existing:
             conn.execute(f"ALTER TABLE patients ADD COLUMN {column} {col_type}")
 
+def _ensure_visit_extra_columns(conn: sqlite3.Connection):
+    existing = {
+        row["name"] for row in conn.execute("PRAGMA table_info(visits)").fetchall()
+    }
+    if "dressing" not in existing:
+        conn.execute("ALTER TABLE visits ADD COLUMN dressing INTEGER DEFAULT 0")
+
 
 def _apply_migrations(conn: sqlite3.Connection):
     cursor = conn.cursor()
@@ -466,6 +474,7 @@ def initialize_db():
     try:
         conn.executescript(SCHEMA_SQL)
         _ensure_patient_extra_columns(conn)
+        _ensure_visit_extra_columns(conn)
         _seed_defaults(conn)
         conn.commit()
         _apply_migrations(conn)
