@@ -134,7 +134,8 @@ class ConsultationFormDialog(QDialog):
         )
 
         self.f_diagnosed_by = StyledComboBox()
-        self.f_diagnosed_by.addItems(["Doctor", "Nurse"])
+        self.f_diagnosed_by.addItem("Doctor (Dr. Bansal)", "Doctor")
+        self.f_diagnosed_by.addItem("Nurse", "Nurse")
         self.f_diagnosed_by.setStyleSheet(
             "QComboBox { background-color: #ffffff; color: #000000; }"
         )
@@ -160,13 +161,22 @@ class ConsultationFormDialog(QDialog):
         form.setLabelAlignment(Qt.AlignRight)
         form.setSpacing(10)
 
-        self.f_complaint = QTextEdit()
-        self.f_complaint.setPlaceholderText("What does the patient present with?")
-        self.f_complaint.setMinimumHeight(60)
+        self.f_complaint = StyledComboBox()
+        self.f_complaint.setEditable(True)
+        self.f_complaint.addItems(["", "Cold", "Cough", "Throat pain", "Body ache", "Headache", 
+                                   "Breathing difficulty", "Fever", "Bleeding", "Itching", 
+                                   "Pain (legs, upper arms)", "Loose stools", "Loss of appetite", 
+                                   "Allergy", "Running nose", "Nose block", "Sore throat", 
+                                   "Watery eyes", "Stomach pain", "Nausea/Vomiting", "Dehydration", 
+                                   "Frequent urination", "Urgency (urine)", "Smelling urine", 
+                                   "Pain (lower abdomen)", "Blood in urine", "Fever with chills", 
+                                   "Back pain", "Shoulder pain", "Bloating (gas problem)", "Fainting"])
+        self.f_complaint.setStyleSheet("QComboBox { background-color: #ffffff; color: #000000; }")
 
-        self.f_diagnosis = QTextEdit()
-        self.f_diagnosis.setPlaceholderText("Clinical diagnosis")
-        self.f_diagnosis.setMinimumHeight(60)
+        self.f_diagnosis = StyledComboBox()
+        self.f_diagnosis.setEditable(True)
+        self.f_diagnosis.addItems(["", "AGE", "Injury", "URI", "ENT", "Allergy", "Burns", "Dressing", "Other"])
+        self.f_diagnosis.setStyleSheet("QComboBox { background-color: #ffffff; color: #000000; }")
 
         # Category row: dropdown + Add button
         cat_row = QHBoxLayout()
@@ -181,9 +191,10 @@ class ConsultationFormDialog(QDialog):
         cat_row.addWidget(self.f_category)
         cat_row.addWidget(btn_add_cat)
 
-        self.f_investigations = QTextEdit()
-        self.f_investigations.setPlaceholderText("Lab tests, X-Ray, ECG, etc.")
-        self.f_investigations.setMinimumHeight(60)
+        self.f_investigations = StyledComboBox()
+        self.f_investigations.setEditable(True)
+        self.f_investigations.addItems(["", "X-Ray", "USG", "CBC", "MP Test", "Dengue", "CRP", "LFT", "RFT", "CUE", "Thyroid Profile", "Vitamin D", "Vitamin B12", "ECG", "Widal", "RBS", "UPT", "FBS", "Cultures (Blood/Urine)"])
+        self.f_investigations.setStyleSheet("QComboBox { background-color: #ffffff; color: #000000; }")
 
         self.f_treatment = QTextEdit()
         self.f_treatment.setPlaceholderText("Treatment given")
@@ -339,10 +350,30 @@ class ConsultationFormDialog(QDialog):
             if qd.isValid():
                 self.f_visit_date.setDate(qd)
 
+        # Diagnosed by
+        db_val = v.get("diagnosed_by", "Doctor")
+        idx_diag = self.f_diagnosed_by.findData(db_val)
+        if idx_diag >= 0:
+            self.f_diagnosed_by.setCurrentIndex(idx_diag)
+
         # Clinical fields
-        self.f_complaint.setPlainText(v.get("chief_complaint") or "")
-        self.f_diagnosis.setPlainText(v.get("diagnosis") or "")
-        self.f_investigations.setPlainText(v.get("investigations") or "")
+        comp_val = v.get("chief_complaint") or ""
+        if isinstance(self.f_complaint, StyledComboBox):
+            self.f_complaint.setCurrentText(comp_val)
+        else:
+            self.f_complaint.setPlainText(comp_val)
+        
+        diag_val = v.get("diagnosis") or ""
+        if isinstance(self.f_diagnosis, StyledComboBox):
+            self.f_diagnosis.setCurrentText(diag_val)
+        else:
+            self.f_diagnosis.setPlainText(diag_val)
+            
+        inv_val = v.get("investigations") or ""
+        if isinstance(self.f_investigations, StyledComboBox):
+            self.f_investigations.setCurrentText(inv_val)
+        else:
+            self.f_investigations.setPlainText(inv_val)
         self.f_treatment.setPlainText(v.get("treatment") or "")
         self._set_prescription_from_text(v.get("prescription") or "")
 
@@ -580,8 +611,8 @@ class ConsultationFormDialog(QDialog):
 
         visit_data = {
             "visit_date": self.f_visit_date.date().toString("yyyy-MM-dd"),
-            "chief_complaint": self.f_complaint.toPlainText().strip(),
-            "diagnosis": self.f_diagnosis.toPlainText().strip(),
+            "chief_complaint": self.f_complaint.currentText().strip() if isinstance(self.f_complaint, StyledComboBox) else self.f_complaint.toPlainText().strip(),
+            "diagnosis": self.f_diagnosis.currentText().strip() if isinstance(self.f_diagnosis, StyledComboBox) else self.f_diagnosis.toPlainText().strip(),
             "prescription": prescription_text,
             "treatment": self.f_treatment.toPlainText().strip(),
             "advise": "", # will fall back to patient-level advise if blank
@@ -615,8 +646,9 @@ class ConsultationFormDialog(QDialog):
 
     def _on_save(self):
         # Minimal validation
-        if not self.f_diagnosis.toPlainText().strip() and \
-           not self.f_complaint.toPlainText().strip():
+        diag_text = self.f_diagnosis.currentText().strip() if isinstance(self.f_diagnosis, StyledComboBox) else self.f_diagnosis.toPlainText().strip()
+        comp_text = self.f_complaint.currentText().strip() if isinstance(self.f_complaint, StyledComboBox) else self.f_complaint.toPlainText().strip()
+        if not diag_text and not comp_text:
             QMessageBox.warning(
                 self, "Validation",
                 "Please enter at least a Chief Complaint or Diagnosis."
@@ -645,16 +677,17 @@ class ConsultationFormDialog(QDialog):
 
         common_kwargs = dict(
             visit_type       = self.f_visit_type.currentText(),
-            chief_complaint  = self.f_complaint.toPlainText().strip() or None,
-            diagnosis        = self.f_diagnosis.toPlainText().strip() or None,
+            chief_complaint  = comp_text or None,
+            diagnosis        = diag_text or None,
             category_id      = category_id,
-            investigations   = self.f_investigations.toPlainText().strip() or None,
+            investigations   = self.f_investigations.currentText().strip() if isinstance(self.f_investigations, StyledComboBox) else self.f_investigations.toPlainText().strip() or None,
             treatment        = self.f_treatment.toPlainText().strip() or None,
             prescription     = prescription_text,
             referral         = referral,
             rest_days        = self.f_rest_days.value(),
             medical_leave    = self.chk_med_leave.isChecked(),
             ambulance_used   = self.chk_ambulance.isChecked(),
+            diagnosed_by     = self.f_diagnosed_by.currentData(),
             follow_up_date   = follow_up,
             notes            = self.f_notes.toPlainText().strip() or None,
         )

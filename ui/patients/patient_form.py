@@ -76,13 +76,23 @@ MULTILINE_FIELDS = {
     "other_relevant_history": 58,
     "general_appearance": 58,
     "diagnosis": 58,
-    "advise": 120,
 }
 
 DATE_FIELDS = {
     "exam_date": "Date",
     "admission_referral_date": "Admission/Referral Date",
     "letter_date": "Prescription Date",
+}
+
+COMBO_FIELDS = {
+    "blood_pressure": ["", "80/50 mmHg", "90/50 mmHg", "100/60 mmHg", "110/70 mmHg", "120/80 mmHg", "130/90 mmHg", "140/100 mmHg", "Above 150/100 mmHg"],
+    "pulse": ["", "60-65", "70-75", "75-80", "80-85", "85-90", "90-95", "95-100", "Above 100"],
+    "resp_rate": ["", "16-20%", "95%", "98%", "99%"],
+    "advise": ["", "Yes", "No"],
+    "chief_complaint_1": ["", "Cold", "Cough", "Throat pain", "Body ache", "Headache", "Breathing difficulty", "Fever", "Bleeding", "Itching", "Pain (legs, upper arms)", "Loose stools", "Loss of appetite", "Allergy", "Running nose", "Nose block", "Sore throat", "Watery eyes", "Stomach pain", "Nausea/Vomiting", "Dehydration", "Frequent urination", "Urgency (urine)", "Smelling urine", "Pain (lower abdomen)", "Blood in urine", "Fever with chills", "Back pain", "Shoulder pain", "Bloating (gas problem)", "Fainting"],
+    "chief_complaint_2": ["", "Cold", "Cough", "Throat pain", "Body ache", "Headache", "Breathing difficulty", "Fever", "Bleeding", "Itching", "Pain (legs, upper arms)", "Loose stools", "Loss of appetite", "Allergy", "Running nose", "Nose block", "Sore throat", "Watery eyes", "Stomach pain", "Nausea/Vomiting", "Dehydration", "Frequent urination", "Urgency (urine)", "Smelling urine", "Pain (lower abdomen)", "Blood in urine", "Fever with chills", "Back pain", "Shoulder pain", "Bloating (gas problem)", "Fainting"],
+    "chief_complaint_3": ["", "Cold", "Cough", "Throat pain", "Body ache", "Headache", "Breathing difficulty", "Fever", "Bleeding", "Itching", "Pain (legs, upper arms)", "Loose stools", "Loss of appetite", "Allergy", "Running nose", "Nose block", "Sore throat", "Watery eyes", "Stomach pain", "Nausea/Vomiting", "Dehydration", "Frequent urination", "Urgency (urine)", "Smelling urine", "Pain (lower abdomen)", "Blood in urine", "Fever with chills", "Back pain", "Shoulder pain", "Bloating (gas problem)", "Fainting"],
+    "chief_complaint_4": ["", "Cold", "Cough", "Throat pain", "Body ache", "Headache", "Breathing difficulty", "Fever", "Bleeding", "Itching", "Pain (legs, upper arms)", "Loose stools", "Loss of appetite", "Allergy", "Running nose", "Nose block", "Sore throat", "Watery eyes", "Stomach pain", "Nausea/Vomiting", "Dehydration", "Frequent urination", "Urgency (urine)", "Smelling urine", "Pain (lower abdomen)", "Blood in urine", "Fever with chills", "Back pain", "Shoulder pain", "Bloating (gas problem)", "Fainting"],
 }
 
 
@@ -583,11 +593,18 @@ class PatientFormDialog(QDialog):
         colspan: int = 1, required: bool = False
     ):
         label = TEXT_FIELDS[key] + (" *" if required else "")
-        widget = QTextEdit() if key in MULTILINE_FIELDS else QLineEdit()
-        if isinstance(widget, QTextEdit):
+        
+        if key in COMBO_FIELDS:
+            widget = StyledComboBox()
+            widget.setEditable(True)
+            widget.addItems(COMBO_FIELDS[key])
+        elif key in MULTILINE_FIELDS:
+            widget = QTextEdit()
             widget.setFixedHeight(MULTILINE_FIELDS[key])
         else:
+            widget = QLineEdit()
             widget.setMaxLength(160)
+            
         self.fields[key] = widget
 
         wrap = QWidget()
@@ -640,8 +657,11 @@ class PatientFormDialog(QDialog):
             if date.isValid():
                 widget.setDate(date)
         elif isinstance(widget, StyledComboBox):
-            idx = widget.findText(text)
-            widget.setCurrentIndex(max(0, idx))
+            if widget.isEditable():
+                widget.setCurrentText(text)
+            else:
+                idx = widget.findText(text)
+                widget.setCurrentIndex(max(0, idx))
         elif hasattr(widget, "setCurrentText"):
             widget.setCurrentText(text)
         else:

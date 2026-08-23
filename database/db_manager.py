@@ -20,9 +20,16 @@ logger = logging.getLogger(__name__)
 # ── DB path handling ──────────────────────────────────────────────────────────
 
 def get_db_path():
-    # Get the user's AppData/Roaming directory
-    app_data = os.getenv('APPDATA')
-    app_dir = os.path.join(app_data, 'NmimsClinica')
+    if sys.platform == 'win32':
+        # Get the user's AppData/Roaming directory
+        base_dir = os.getenv('APPDATA')
+        if not base_dir:
+            base_dir = os.path.expanduser("~")
+    else:
+        # For Linux and macOS, store in Documents folder
+        base_dir = os.path.join(os.path.expanduser("~"), "Documents")
+        
+    app_dir = os.path.join(base_dir, 'NmimsClinica')
     
     # Create the directory if it doesn't exist
     if not os.path.exists(app_dir):
