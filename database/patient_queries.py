@@ -343,8 +343,7 @@ def get_patient_stats() -> dict:
     sql_followups = """
         SELECT COUNT(*) AS follow_up_cases
         FROM visits
-        WHERE (follow_up_date IS NOT NULL AND TRIM(follow_up_date) != '')
-           OR is_follow_up = 1
+        WHERE is_follow_up = 1
     """
     sql_dressing = """
         SELECT COUNT(*) AS dressing_cases
