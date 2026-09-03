@@ -629,7 +629,12 @@ class PatientFormDialog(QDialog):
         grid.addWidget(wrap, row, col)
 
     def _lbl(self, text: str) -> QLabel:
-        lbl = QLabel(text)
+        if "*" in text:
+            text = text.replace("*", '<span style="color: #dc2626; font-weight: bold;">*</span>')
+            lbl = QLabel(text)
+            lbl.setTextFormat(Qt.RichText)
+        else:
+            lbl = QLabel(text)
         lbl.setObjectName("FieldLabel")
         return lbl
 

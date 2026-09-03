@@ -26,7 +26,12 @@ from database.patient_queries import get_patient_by_id
 
 
 def _lbl(text: str) -> QLabel:
-    lbl = QLabel(text)
+    if "*" in text:
+        text = text.replace("*", '<span style="color: #dc2626; font-weight: bold;">*</span>')
+        lbl = QLabel(text)
+        lbl.setTextFormat(Qt.RichText)
+    else:
+        lbl = QLabel(text)
     lbl.setObjectName("FieldLabel")
     return lbl
 

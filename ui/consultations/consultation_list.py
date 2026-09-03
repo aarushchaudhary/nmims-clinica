@@ -99,6 +99,8 @@ class ConsultDetailPane(QFrame):
             f"<b>Medical Leave:</b> {yn(v.get('medical_leave'))}",
             f"<b>Ambulance Used:</b> {yn(v.get('ambulance_used'))}",
         ]
+        if v.get("is_follow_up"):
+            lines.append("<b>Follow-up Case:</b> ✅ Yes")
         if v.get("follow_up_date"):
             lines.append(f"<b>Follow-up:</b> {v['follow_up_date']}")
         if v.get("notes"):

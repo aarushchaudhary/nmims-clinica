@@ -174,6 +174,8 @@ class VisitDetailPane(QFrame):
             f"<b>Medical Leave:</b> {yn(visit.get('medical_leave'))}",
             f"<b>Ambulance Used:</b> {yn(visit.get('ambulance_used'))}",
         ]
+        if visit.get("is_follow_up"):
+            lines.append("<b>Follow-up Case:</b> ✅ Yes")
         if visit.get("follow_up_date"):
             lines.append(f"<b>Follow-up:</b> {visit['follow_up_date']}")
         if visit.get("notes"):

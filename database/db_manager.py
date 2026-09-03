@@ -182,6 +182,7 @@ CREATE TABLE IF NOT EXISTS visits (
     medical_leave       INTEGER NOT NULL DEFAULT 0 CHECK(medical_leave IN (0, 1)),
     ambulance_used      INTEGER NOT NULL DEFAULT 0 CHECK(ambulance_used IN (0, 1)),
     dressing            INTEGER NOT NULL DEFAULT 0 CHECK(dressing IN (0, 1)),
+    is_follow_up        INTEGER NOT NULL DEFAULT 0 CHECK(is_follow_up IN (0, 1)),
     
     diagnosed_by        TEXT NOT NULL DEFAULT 'Doctor' CHECK(diagnosed_by IN ('Doctor', 'Nurse')),
 
@@ -437,6 +438,8 @@ def _ensure_visit_extra_columns(conn: sqlite3.Connection):
     }
     if "dressing" not in existing:
         conn.execute("ALTER TABLE visits ADD COLUMN dressing INTEGER DEFAULT 0")
+    if "is_follow_up" not in existing:
+        conn.execute("ALTER TABLE visits ADD COLUMN is_follow_up INTEGER DEFAULT 0")
 
 
 def _apply_migrations(conn: sqlite3.Connection):

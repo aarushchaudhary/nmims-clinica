@@ -95,6 +95,7 @@ def create_visit(
     medical_leave: bool = False,
     ambulance_used: bool = False,
     dressing: bool = False,
+    is_follow_up: bool = False,
     diagnosed_by: str = "Doctor",
     follow_up_date: str = None,        # ISO string: 'YYYY-MM-DD'
     notes: str = None,
@@ -108,13 +109,13 @@ def create_visit(
             patient_id, visit_type, visit_date,
             chief_complaint, diagnosis, category_id,
             investigations, treatment, prescription,
-            referral, rest_days, medical_leave, ambulance_used, dressing,
+            referral, rest_days, medical_leave, ambulance_used, dressing, is_follow_up,
             diagnosed_by, follow_up_date, notes
         ) VALUES (
             ?, ?, COALESCE(?, datetime('now')),
             ?, ?, ?,
             ?, ?, ?,
-            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
             ?, ?, ?
         )
     """
@@ -128,6 +129,7 @@ def create_visit(
             1 if medical_leave else 0,
             1 if ambulance_used else 0,
             1 if dressing else 0,
+            1 if is_follow_up else 0,
             diagnosed_by, follow_up_date, notes
         ))
         conn.commit()
@@ -363,6 +365,7 @@ def update_visit(
     medical_leave: bool = _UNSET,
     ambulance_used: bool = _UNSET,
     dressing: bool = _UNSET,
+    is_follow_up: bool = _UNSET,
     diagnosed_by: str = _UNSET,
     follow_up_date: str = _UNSET,
     notes: str = _UNSET,
@@ -381,6 +384,7 @@ def update_visit(
     if medical_leave   is not _UNSET: fields["medical_leave"]   = 1 if medical_leave else 0
     if ambulance_used  is not _UNSET: fields["ambulance_used"]  = 1 if ambulance_used else 0
     if dressing        is not _UNSET: fields["dressing"]        = 1 if dressing else 0
+    if is_follow_up    is not _UNSET: fields["is_follow_up"]    = 1 if is_follow_up else 0
     if diagnosed_by    is not _UNSET: fields["diagnosed_by"]    = diagnosed_by
     if follow_up_date  is not _UNSET: fields["follow_up_date"]  = follow_up_date
     if notes           is not _UNSET: fields["notes"]           = notes

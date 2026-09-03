@@ -133,6 +133,14 @@ class ConsultationFormDialog(QDialog):
             "QComboBox { background-color: #ffffff; color: #000000; }"
         )
 
+        vt_row = QHBoxLayout()
+        vt_row.addWidget(self.f_visit_type)
+        vt_row.addSpacing(20)
+        self.chk_is_followup = QCheckBox("Is this a follow up case?")
+        self.chk_is_followup.setStyleSheet("font-weight: 600; color: #0f766e;")
+        vt_row.addWidget(self.chk_is_followup)
+        vt_row.addStretch()
+
         self.f_diagnosed_by = StyledComboBox()
         self.f_diagnosed_by.addItem("Doctor (Dr. Bansal)", "Doctor")
         self.f_diagnosed_by.addItem("Nurse", "Nurse")
@@ -150,7 +158,7 @@ class ConsultationFormDialog(QDialog):
         if not self.is_edit:
             self.f_visit_date.setEnabled(False)
 
-        form.addRow(self._lbl("Visit Type *"), self.f_visit_type)
+        form.addRow(self._lbl("Visit Type *"), vt_row)
         form.addRow(self._lbl("Diagnosed By *"), self.f_diagnosed_by)
         form.addRow(self._lbl("Date *"),       self.f_visit_date)
         return grp
@@ -284,9 +292,13 @@ class ConsultationFormDialog(QDialog):
         # Checkboxes row
         chk_row = QHBoxLayout()
         self.chk_dressing  = QCheckBox("Dressing Required 🩹")
+        self.chk_is_followup_flags = QCheckBox("Is this a follow up case?")
+        self.chk_is_followup_flags.setStyleSheet("font-weight: 600; color: #0f766e;")
         self.chk_med_leave = QCheckBox("Medical Leave Issued")
         self.chk_ambulance = QCheckBox("Ambulance Used 🚑")
         chk_row.addWidget(self.chk_dressing)
+        chk_row.addSpacing(16)
+        chk_row.addWidget(self.chk_is_followup_flags)
         chk_row.addSpacing(16)
         chk_row.addWidget(self.chk_med_leave)
         chk_row.addSpacing(16)
@@ -294,6 +306,9 @@ class ConsultationFormDialog(QDialog):
         chk_row.addStretch()
         grid.addWidget(self._lbl("Flags"), 3, 0, Qt.AlignRight)
         grid.addLayout(chk_row, 3, 1)
+
+        self.chk_is_followup.toggled.connect(self.chk_is_followup_flags.setChecked)
+        self.chk_is_followup_flags.toggled.connect(self.chk_is_followup.setChecked)
 
         # Notes
         grid.addWidget(self._lbl("Notes"), 4, 0, Qt.AlignRight | Qt.AlignTop)
@@ -330,7 +345,12 @@ class ConsultationFormDialog(QDialog):
         return w
 
     def _lbl(self, text: str) -> QLabel:
-        lbl = QLabel(text)
+        if "*" in text:
+            text = text.replace("*", '<span style="color: #dc2626; font-weight: bold;">*</span>')
+            lbl = QLabel(text)
+            lbl.setTextFormat(Qt.RichText)
+        else:
+            lbl = QLabel(text)
         lbl.setObjectName("FieldLabel")
         return lbl
 
@@ -391,6 +411,7 @@ class ConsultationFormDialog(QDialog):
         self.f_referral.setText(v.get("referral") or "")
         self.f_rest_days.setValue(int(v.get("rest_days") or 0))
         self.chk_dressing.setChecked(bool(v.get("dressing")) or (v.get("diagnosis") == "Dressing"))
+        self.chk_is_followup.setChecked(bool(v.get("is_follow_up")))
         self.chk_med_leave.setChecked(bool(v.get("medical_leave")))
         self.chk_ambulance.setChecked(bool(v.get("ambulance_used")))
 
@@ -617,6 +638,7 @@ class ConsultationFormDialog(QDialog):
             "visit_date": self.f_visit_date.date().toString("yyyy-MM-dd"),
             "chief_complaint": self.f_complaint.currentText().strip() if isinstance(self.f_complaint, StyledComboBox) else self.f_complaint.toPlainText().strip(),
             "diagnosis": self.f_diagnosis.currentText().strip() if isinstance(self.f_diagnosis, StyledComboBox) else self.f_diagnosis.toPlainText().strip(),
+            "investigations": self.f_investigations.currentText().strip() if isinstance(self.f_investigations, StyledComboBox) else self.f_investigations.toPlainText().strip(),
             "prescription": prescription_text,
             "treatment": self.f_treatment.toPlainText().strip(),
             "advise": "", # will fall back to patient-level advise if blank
@@ -692,6 +714,7 @@ class ConsultationFormDialog(QDialog):
             medical_leave    = self.chk_med_leave.isChecked(),
             ambulance_used   = self.chk_ambulance.isChecked(),
             dressing         = self.chk_dressing.isChecked() or (diag_text == "Dressing"),
+            is_follow_up     = self.chk_is_followup.isChecked(),
             diagnosed_by     = self.f_diagnosed_by.currentData(),
             follow_up_date   = follow_up,
             notes            = self.f_notes.toPlainText().strip() or None,
