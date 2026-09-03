@@ -230,6 +230,11 @@ class PatientHistoryWidget(QWidget):
         hdr.addWidget(btn_back)
         hdr.addStretch()
 
+        self.btn_print_leave = QPushButton("📄  Print Medical Leave")
+        self.btn_print_leave.setObjectName("BtnSecondary")
+        self.btn_print_leave.setFixedHeight(36)
+        self.btn_print_leave.clicked.connect(self._on_print_medical_leave)
+
         self.btn_edit_consult = QPushButton("✏️  Edit Consultation")
         self.btn_edit_consult.setObjectName("BtnWarning")
         self.btn_edit_consult.setFixedHeight(36)
@@ -248,6 +253,8 @@ class PatientHistoryWidget(QWidget):
         self.btn_new_consult.clicked.connect(
             lambda: self.consult_requested.emit(self.patient_id)
         )
+        hdr.addWidget(self.btn_print_leave)
+        hdr.addSpacing(8)
         hdr.addWidget(self.btn_edit_consult)
         hdr.addSpacing(8)
         hdr.addWidget(self.btn_print_pdf)
@@ -436,6 +443,57 @@ class PatientHistoryWidget(QWidget):
             QDesktopServices.openUrl(QUrl.fromLocalFile(saved_path))
         except Exception as exc:
             QMessageBox.critical(self, "PDF Error", f"Could not create PDF:\n{exc}")
+
+    def _on_print_medical_leave(self):
+        row = self.table.currentRow()
+        visit = None
+        if 0 <= row < len(self._visits):
+            visit = self._visits[row]
+        elif self._visits:
+            visit = self._visits[0]
+
+        try:
+            from utils.consultation_pdf import export_medical_leave_pdf
+        except ModuleNotFoundError:
+            QMessageBox.warning(
+                self,
+                "PDF Unavailable",
+                "PDF export is not available because PyMuPDF is not installed."
+            )
+            return
+
+        patient = self._patient or {}
+        sap_id = patient.get("sap_id") or "patient"
+
+        date_str = ""
+        if visit and visit.get("visit_date"):
+            date_str = str(visit.get("visit_date"))[:10].replace("-", "")
+        else:
+            from datetime import datetime
+            date_str = datetime.now().strftime("%Y%m%d")
+
+        default_name = f"Medical_Certificate_{sap_id}_{date_str}.pdf"
+        default_path = default_name.replace("/", "_")
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Medical Leave PDF",
+            default_path,
+            "PDF Files (*.pdf)"
+        )
+        if not file_path:
+            return
+
+        try:
+            saved_path = export_medical_leave_pdf(
+                file_path,
+                patient=patient,
+                visit=visit,
+            )
+            QMessageBox.information(self, "PDF Created", f"Medical Certificate saved to:\n{saved_path}")
+            QDesktopServices.openUrl(QUrl.fromLocalFile(saved_path))
+        except Exception as exc:
+            QMessageBox.critical(self, "PDF Error", f"Could not create Medical Certificate:\n{exc}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

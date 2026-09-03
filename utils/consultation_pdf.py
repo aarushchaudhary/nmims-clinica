@@ -454,3 +454,108 @@ def export_consultation_pdf(
     doc.save(str(output_path))
     doc.close()
     return str(output_path)
+
+
+def export_medical_leave_pdf(
+    output_path: str | Path,
+    patient: dict,
+    visit: dict = None,
+) -> str:
+    """
+    Generate a 1-page Medical Certificate PDF matching the clinic's standard format.
+    """
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+
+    left_logo = _find_asset("stmelogo.png") or _find_asset("icons/logo.png")
+    right_logo = _find_asset("logo2.png")
+    _draw_header_footer(page, left_logo, right_logo, page_num=1)
+
+    p_name = patient.get("name") or patient.get("emp_name") or ""
+    p_sap_id = patient.get("sap_id") or patient.get("employee_id") or ""
+
+    # Date
+    p_date = ""
+    if visit and visit.get("visit_date"):
+        raw_d = str(visit.get("visit_date")).strip()
+        from datetime import datetime
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+            try:
+                p_date = datetime.strptime(raw_d[:19], fmt).strftime("%d %b %Y")
+                break
+            except ValueError:
+                pass
+        if not p_date:
+            p_date = raw_d[:10]
+    else:
+        from datetime import datetime
+        p_date = datetime.now().strftime("%d %b %Y")
+
+    # Age & Sex
+    age_v = patient.get("age")
+    age_m = patient.get("age_months")
+    age_str = ""
+    if age_v is not None and str(age_v).strip():
+        age_str = f"{age_v} Yrs"
+        if age_m is not None and str(age_m).strip():
+            age_str += f" {age_m} Mths"
+    elif age_m is not None and str(age_m).strip():
+        age_str = f"{age_m} Mths"
+
+    sex_val = str(patient.get("sex") or patient.get("gender") or "").strip()
+    if sex_val.lower().startswith("m"):
+        sex_str = "M"
+    elif sex_val.lower().startswith("f"):
+        sex_str = "F"
+    else:
+        sex_str = sex_val
+
+    phone_val = (
+        patient.get("mobile")
+        or patient.get("phone")
+        or patient.get("tel")
+        or patient.get("contact")
+        or (visit.get("phone") if visit else None)
+        or (visit.get("mobile") if visit else None)
+        or ""
+    )
+    phone_str = str(phone_val).strip() if phone_val else "..............."
+
+    p_type = patient.get("type") or patient.get("patient_type") or "Student"
+    school_lbl = "School:  " if p_type == "Student" else "Dept:  "
+    school_v = patient.get("school") or ""
+    if p_type == "Student" and patient.get("year"):
+        school_v += f" ({patient.get('year')} Yr)"
+
+    # Draw Header (Left & Right)
+    y_hdr = 130
+    _text(page, 40, y_hdr, "Emp. Name:  " + _val_or_dots(p_name, 25))
+    _text(page, 40, y_hdr + 15, "SAP ID:  " + _val_or_dots(p_sap_id, 18))
+    _text(page, 40, y_hdr + 30, school_lbl + _val_or_dots(school_v, 20))
+
+    _text(page, 360, y_hdr, "Date:  " + _val_or_dots(p_date, 15))
+    _text(page, 360, y_hdr + 15, "Age:  " + _val_or_dots(age_str, 8) + "    Sex:  " + _val_or_dots(sex_str, 6))
+    _text(page, 360, y_hdr + 30, "Phone:  " + phone_str)
+
+    # Title
+    title_text = "MEDICAL CERTIFICATE"
+    title_fs = 24
+    title_w = fitz.get_text_length(title_text, fontname="hebo", fontsize=title_fs)
+    title_x = (595 - title_w) / 2
+    title_y = 420
+
+    _text(page, title_x, title_y, title_text, fontsize=title_fs, bold=True)
+    _line(page, title_x, title_y + 4, title_x + title_w, title_y + 4, color=(0, 0, 0), width=1.5)
+
+    # Body
+    y_body = title_y + 60
+    _text(page, 40, y_body, "TO WHO SO EVER IT MAY CONCERN", fontsize=11, bold=True)
+    _text(page, 40, y_body + 20, "Certified that the above named is/was under my treatment w.e.f. _____ to _____.", fontsize=11, bold=True)
+    _text(page, 40, y_body + 40, "He/She is/was suffering from _____. He/She is/was advised Rest in Bed for ___ days from ___ to ___.", fontsize=11, bold=True)
+
+    # Doctor signature
+    _text(page, 400, 650, "Signature and Stamp of Doctor", fontsize=10, bold=True)
+
+    doc.save(str(output_path))
+    doc.close()
+    return str(output_path)
