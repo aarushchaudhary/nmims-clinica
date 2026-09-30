@@ -81,9 +81,11 @@ class BaseExportThread(QThread):
     finished = Signal(str)       # file_path
     error = Signal(str)          # error message
 
-    def __init__(self, export_dir=None):
+    def __init__(self, export_dir=None, target_month=None, target_year=None):
         super().__init__()
         self.export_dir = export_dir
+        self.target_month = target_month
+        self.target_year = target_year
         self.chunk_size = 1000
 
     def _write_title_block(self, ws, title: str, subtitle: str, col_count: int):
@@ -126,8 +128,8 @@ class BaseExportThread(QThread):
 
 
 class ExportPatientsThread(BaseExportThread):
-    def __init__(self, patient_type=None, export_dir=None):
-        super().__init__(export_dir)
+    def __init__(self, patient_type=None, export_dir=None, target_month=None, target_year=None):
+        super().__init__(export_dir, target_month, target_year)
         self.patient_type = patient_type
 
     def run(self):
@@ -142,6 +144,12 @@ class ExportPatientsThread(BaseExportThread):
             if self.patient_type:
                 count_query += " WHERE type = ?"
                 params.append(self.patient_type)
+            if self.target_month and self.target_year:
+                if "WHERE" in count_query:
+                    count_query += " AND strftime('%m', created_at) = ? AND strftime('%Y', created_at) = ?"
+                else:
+                    count_query += " WHERE strftime('%m', created_at) = ? AND strftime('%Y', created_at) = ?"
+                params.extend([f"{self.target_month:02d}", str(self.target_year)])
                 
             total = conn.execute(count_query, params).fetchone()[0]
             if total == 0:
@@ -164,6 +172,12 @@ class ExportPatientsThread(BaseExportThread):
             query = "SELECT id, sap_id, name, type, school, age, gender, blood_group, mobile, address, created_at FROM patients"
             if self.patient_type:
                 query += " WHERE type = ?"
+            if self.target_month and self.target_year:
+                if "WHERE" in query:
+                    query += " AND strftime('%m', created_at) = ? AND strftime('%Y', created_at) = ?"
+                else:
+                    query += " WHERE strftime('%m', created_at) = ? AND strftime('%Y', created_at) = ?"
+
                 
             cursor = conn.cursor()
             cursor.execute(query, params)
@@ -211,8 +225,24 @@ class ExportVisitsThread(BaseExportThread):
         conn = None
         try:
             self.progress.emit(0, "Initializing database...")
+            
+            import calendar
+            date_from = None
+            date_to = None
+            if self.target_month and self.target_year:
+                date_from = f"{self.target_year}-{self.target_month:02d}-01"
+                last_day = calendar.monthrange(self.target_year, self.target_month)[1]
+                date_to = f"{self.target_year}-{self.target_month:02d}-{last_day:02d}"
+                
             conn = get_connection()
-            total = conn.execute("SELECT COUNT(*) FROM visits").fetchone()[0]
+            
+            count_q = "SELECT COUNT(*) FROM visits"
+            params = []
+            if date_from:
+                count_q += " WHERE SUBSTR(visit_date, 1, 10) >= ? AND SUBSTR(visit_date, 1, 10) <= ?"
+                params.extend([date_from, date_to])
+            
+            total = conn.execute(count_q, params).fetchone()[0]
             if total == 0:
                 self.error.emit("No visits found to export.")
                 return
@@ -235,7 +265,7 @@ class ExportVisitsThread(BaseExportThread):
             ws.freeze_panes = ws.cell(row=4, column=1)
 
             from database.visit_queries import get_visits_for_export
-            visits = get_visits_for_export()
+            visits = get_visits_for_export(date_from=date_from, date_to=date_to)
             
             current_row = 4
             processed = 0
@@ -284,6 +314,15 @@ class ExportInventoryThread(BaseExportThread):
         conn = None
         try:
             self.progress.emit(0, "Fetching inventory data...")
+            
+            import calendar
+            date_from = None
+            date_to = None
+            if self.target_month and self.target_year:
+                date_from = f"{self.target_year}-{self.target_month:02d}-01"
+                last_day = calendar.monthrange(self.target_year, self.target_month)[1]
+                date_to = f"{self.target_year}-{self.target_month:02d}-{last_day:02d}"
+
             wb = Workbook()
             ws = wb.active
             ws.title = "Medicines"
@@ -299,7 +338,7 @@ class ExportInventoryThread(BaseExportThread):
             ws.freeze_panes = ws.cell(row=4, column=1)
 
             from database.inventory_queries import get_medicines_for_export, get_all_equipment
-            medicines = get_medicines_for_export()
+            medicines = get_medicines_for_export(date_from=date_from, date_to=date_to)
             total = len(medicines)
             if total == 0:
                 self.error.emit("No medicines found to export.")
@@ -372,6 +411,15 @@ class ExportAllDataThread(BaseExportThread):
     def run(self):
         try:
             self.progress.emit(0, "Exporting all data... This might take a while.")
+            
+            import calendar
+            date_from = None
+            date_to = None
+            if self.target_month and self.target_year:
+                date_from = f"{self.target_year}-{self.target_month:02d}-01"
+                last_day = calendar.monthrange(self.target_year, self.target_month)[1]
+                date_to = f"{self.target_year}-{self.target_month:02d}-{last_day:02d}"
+
             wb = Workbook()
             wb.remove(wb.active)  # Remove default sheet
 
@@ -385,7 +433,12 @@ class ExportAllDataThread(BaseExportThread):
 
             conn = get_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT id, sap_id, name, type, school, age, gender, blood_group, mobile, address, created_at FROM patients")
+            q = "SELECT id, sap_id, name, type, school, age, gender, blood_group, mobile, address, created_at FROM patients"
+            if date_from:
+                q += " WHERE strftime('%m', created_at) = ? AND strftime('%Y', created_at) = ?"
+                cursor.execute(q, [f"{self.target_month:02d}", str(self.target_year)])
+            else:
+                cursor.execute(q)
             current_row = 4
             while True:
                 chunk = cursor.fetchmany(self.chunk_size)
@@ -414,7 +467,7 @@ class ExportAllDataThread(BaseExportThread):
             ws_vis.freeze_panes = ws_vis.cell(row=4, column=1)
 
             from database.visit_queries import get_visits_for_export
-            visits = get_visits_for_export()
+            visits = get_visits_for_export(date_from=date_from, date_to=date_to)
             current_row = 4
             for v in visits:
                 cells = [
@@ -447,7 +500,7 @@ class ExportAllDataThread(BaseExportThread):
             ws_med.freeze_panes = ws_med.cell(row=4, column=1)
 
             from database.inventory_queries import get_medicines_for_export, get_all_equipment
-            medicines = get_medicines_for_export()
+            medicines = get_medicines_for_export(date_from=date_from, date_to=date_to)
             current_row = 4
             for m in medicines:
                 rec = int(m.get("stock_received") or 0)
@@ -503,3 +556,96 @@ class ExportAllDataThread(BaseExportThread):
         finally:
             if 'conn' in locals() and conn:
                 conn.close()
+
+class ExportAnalyticsThread(BaseExportThread):
+    def run(self):
+        try:
+            self.progress.emit(0, "Generating analytics...")
+            import calendar
+            date_from = None
+            date_to = None
+            label = "All Time"
+            if self.target_month and self.target_year:
+                date_from = f"{self.target_year}-{self.target_month:02d}-01"
+                last_day = calendar.monthrange(self.target_year, self.target_month)[1]
+                date_to = f"{self.target_year}-{self.target_month:02d}-{last_day:02d}"
+                label = f"{calendar.month_name[self.target_month]} {self.target_year}"
+                
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Analytics"
+            
+            self._write_title_block(ws, f"Clinic Analytics - {label}", f"Generated: {datetime.now().strftime('%d %b %Y %H:%M')}", 2)
+            
+            ws.cell(row=3, column=1, value="Metric").font = HEADER_FONT
+            ws.cell(row=3, column=1).fill = HEADER_FILL_BLUE
+            ws.cell(row=3, column=2, value="Count").font = HEADER_FONT
+            ws.cell(row=3, column=2).fill = HEADER_FILL_BLUE
+            
+            conn = get_connection()
+            
+            # Pat
+            pq = "SELECT COUNT(*) FROM patients"
+            sq = "SELECT COUNT(*) FROM patients WHERE type = 'Student'"
+            sfq = "SELECT COUNT(*) FROM patients WHERE type != 'Student'"
+            
+            if date_from:
+                c_dt = f" AND strftime('%m', created_at) = '{self.target_month:02d}' AND strftime('%Y', created_at) = '{self.target_year}'"
+                pq += c_dt.replace(" AND ", " WHERE ", 1)
+                sq += c_dt
+                sfq += c_dt
+                
+            tot_pat = conn.execute(pq).fetchone()[0]
+            stu_pat = conn.execute(sq).fetchone()[0]
+            stf_pat = conn.execute(sfq).fetchone()[0]
+            
+            # Visits
+            vq = "SELECT COUNT(*) FROM visits"
+            fvq = "SELECT COUNT(*) FROM visits WHERE is_follow_up = 1"
+            dvq = "SELECT COUNT(*) FROM visits WHERE dressing = 1"
+            
+            if date_from:
+                c_vt = f" AND SUBSTR(visit_date, 1, 10) >= '{date_from}' AND SUBSTR(visit_date, 1, 10) <= '{date_to}'"
+                vq += c_vt.replace(" AND ", " WHERE ", 1)
+                fvq += c_vt
+                dvq += c_vt
+                
+            tot_vis = conn.execute(vq).fetchone()[0]
+            fol_vis = conn.execute(fvq).fetchone()[0]
+            dre_vis = conn.execute(dvq).fetchone()[0]
+            
+            # Inv
+            mq = "SELECT COUNT(*) FROM medicines"
+            if date_from:
+                mq += f" WHERE SUBSTR(created_at, 1, 10) >= '{date_from}' AND SUBSTR(created_at, 1, 10) <= '{date_to}'"
+            tot_meds = conn.execute(mq).fetchone()[0]
+            
+            metrics = [
+                ("Total Patients Registered", tot_pat),
+                ("Students Registered", stu_pat),
+                ("Staff/Faculty Registered", stf_pat),
+                ("Total Visits", tot_vis),
+                ("Follow-up Visits", fol_vis),
+                ("Dressings Performed", dre_vis),
+                ("New Medicines Added", tot_meds)
+            ]
+            
+            r = 4
+            for metric, val in metrics:
+                ws.cell(row=r, column=1, value=metric).font = DATA_FONT
+                ws.cell(row=r, column=2, value=val).font = DATA_FONT
+                r += 1
+                
+            self._autofit_columns(ws)
+            ws.sheet_view.showGridLines = False
+            
+            self.progress.emit(90, "Saving file...")
+            filename = f"Analytics_{label.replace(' ', '_')}_{_timestamp()}.xlsx"
+            path = _output_path(filename, self.export_dir)
+            wb.save(path)
+            
+            conn.close()
+            self.progress.emit(100, "Done!")
+            self.finished.emit(path)
+        except Exception as e:
+            self.error.emit(str(e))

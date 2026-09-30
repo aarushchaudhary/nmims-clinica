@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 import os
 import sys
-import fitz
+import pymupdf as fitz
 
 def _find_asset(filename: str) -> Path | None:
     """Resolve asset paths reliably across dev environments and PyInstaller bundles."""
@@ -93,7 +93,7 @@ def _draw_header_footer(page, left_logo_path, right_logo_path, page_num):
     _text(page, 40, 785, "SVKM's", fontsize=9.5, bold=True, color=(0.1, 0.1, 0.1))
     _text(page, 40, 798, "Narsee Monjee Institute of Management Studies, Hyderabad", fontsize=11.5, bold=True, color=(0.725, 0.11, 0.11))
     _text(page, 40, 810, "Deemed to be UNIVERSITY", fontsize=8.5, color=(0.3, 0.3, 0.3))
-    _textbox(page, fitz.Rect(40, 814, 555, 825), 
+    _textbox(page, fitz.Rect(40, 814, 555, 825),
               "Jadcherla Campus: Plot No.- B4, Green Industrial Park, TSIIC, Polepally SEZ, Jadcherla, Mahabubnagar District, Telangana - 509301. India. Ph: 08542350062",
               fontsize=8, color=(0.4, 0.4, 0.4))
 
@@ -542,7 +542,7 @@ def export_medical_leave_pdf(
     title_fs = 24
     title_w = fitz.get_text_length(title_text, fontname="hebo", fontsize=title_fs)
     title_x = (595 - title_w) / 2
-    title_y = 420
+    title_y = 260
 
     _text(page, title_x, title_y, title_text, fontsize=title_fs, bold=True)
     _line(page, title_x, title_y + 4, title_x + title_w, title_y + 4, color=(0, 0, 0), width=1.5)
@@ -550,8 +550,11 @@ def export_medical_leave_pdf(
     # Body
     y_body = title_y + 60
     _text(page, 40, y_body, "TO WHO SO EVER IT MAY CONCERN", fontsize=11, bold=True)
-    _text(page, 40, y_body + 20, "Certified that the above named is/was under my treatment w.e.f. _____ to _____.", fontsize=11, bold=True)
-    _text(page, 40, y_body + 40, "He/She is/was suffering from _____. He/She is/was advised Rest in Bed for ___ days from ___ to ___.", fontsize=11, bold=True)
+    _text(page, 40, y_body + 30, "Certified that the above named is/was under my treatment w.e.f.", fontsize=11, bold=True)
+    _text(page, 40, y_body + 55, "________________________ to ________________________ .", fontsize=11, bold=True)
+    _text(page, 40, y_body + 80, "He/She is/was suffering from ___________________________________________________ .", fontsize=11, bold=True)
+    _text(page, 40, y_body + 105, "He/She is/was advised Rest in Bed for ______________ days", fontsize=11, bold=True)
+    _text(page, 40, y_body + 130, "from ________________________ to ________________________ .", fontsize=11, bold=True)
 
     # Doctor signature
     _text(page, 400, 650, "Signature and Stamp of Doctor", fontsize=10, bold=True)

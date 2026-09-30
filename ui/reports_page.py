@@ -6,9 +6,11 @@ Dedicated screen for triggering threaded Excel exports.
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QProgressBar, QFrame, QMessageBox, QFileDialog, QLineEdit
+    QProgressBar, QFrame, QMessageBox, QFileDialog, QLineEdit,
+    QComboBox
 )
 import os
+import datetime
 from PySide6.QtCore import Qt
 
 class ReportsWidget(QWidget):
@@ -36,6 +38,30 @@ class ReportsWidget(QWidget):
         desc.setObjectName("PageSubtitle")
         cv.addWidget(desc)
 
+        
+        # Month/Year Selection
+        date_h = QHBoxLayout()
+        date_lbl = QLabel("Filter by Month (Optional):")
+        date_lbl.setStyleSheet("font-weight: bold; color: #1e293b;")
+        
+        self.month_combo = QComboBox()
+        self.month_combo.addItem("All Time", None)
+        for i in range(1, 13):
+            self.month_combo.addItem(datetime.date(2000, i, 1).strftime('%B'), i)
+            
+        self.year_combo = QComboBox()
+        self.year_combo.addItem("Any Year", None)
+        current_year = datetime.datetime.now().year
+        for y in range(current_year, current_year - 10, -1):
+            self.year_combo.addItem(str(y), y)
+            
+        date_h.addWidget(date_lbl)
+        date_h.addWidget(self.month_combo)
+        date_h.addWidget(self.year_combo)
+        date_h.addStretch()
+        cv.addLayout(date_h)
+        cv.addSpacing(10)
+        
         # Directory selection
         dir_h = QHBoxLayout()
         dir_lbl = QLabel("Export Directory:")
@@ -56,7 +82,7 @@ class ReportsWidget(QWidget):
         
         cv.addSpacing(10)
 
-        # Buttons
+
         h = QHBoxLayout()
         self.btn_pat = QPushButton("Export Patients")
         self.btn_pat.clicked.connect(self._export_patients)
@@ -67,16 +93,25 @@ class ReportsWidget(QWidget):
         self.btn_vis = QPushButton("Export Visits")
         self.btn_vis.clicked.connect(self._export_visits)
 
-        self.btn_all = QPushButton("⭐ Export All Data")
-        self.btn_all.setObjectName("BtnPrimary")
-        self.btn_all.clicked.connect(self._export_all)
-
         h.addWidget(self.btn_pat)
         h.addWidget(self.btn_inv)
         h.addWidget(self.btn_vis)
-        h.addStretch()
-        h.addWidget(self.btn_all)
+        
+        h2 = QHBoxLayout()
+        self.btn_analytics = QPushButton("📊 Export Analytics")
+        self.btn_analytics.clicked.connect(self._export_analytics)
+        
+        self.btn_all = QPushButton("⭐ Export All Data")
+        self.btn_all.setObjectName("BtnPrimary")
+        self.btn_all.clicked.connect(self._export_all)
+        
+        h2.addWidget(self.btn_analytics)
+        h2.addStretch()
+        h2.addWidget(self.btn_all)
+        
         cv.addLayout(h)
+        cv.addLayout(h2)
+
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
@@ -96,6 +131,9 @@ class ReportsWidget(QWidget):
         self.btn_inv.setEnabled(not blocked)
         self.btn_vis.setEnabled(not blocked)
         self.btn_all.setEnabled(not blocked)
+        self.btn_analytics.setEnabled(not blocked)
+        self.month_combo.setEnabled(not blocked)
+        self.year_combo.setEnabled(not blocked)
         self.progress_bar.setVisible(blocked)
         self.progress_lbl.setVisible(blocked)
         if blocked:
@@ -118,6 +156,15 @@ class ReportsWidget(QWidget):
         except Exception as e:
             self._on_error(str(e))
 
+
+    def _get_selected_date(self):
+        m = self.month_combo.currentData()
+        y = self.year_combo.currentData()
+        if m and not y:
+            y = datetime.datetime.now().year
+        return m, y
+
+
     def _export_patients(self):
         try:
             from exports.excel_exporter_threaded import ExportPatientsThread
@@ -128,7 +175,8 @@ class ReportsWidget(QWidget):
                 f"Excel export is not available because '{exc.name}' is missing."
             )
             return
-        self._start_export_thread(ExportPatientsThread(export_dir=self.dir_input.text()))
+        m, y = self._get_selected_date()
+        self._start_export_thread(ExportPatientsThread(export_dir=self.dir_input.text(), target_month=m, target_year=y))
 
     def _export_visits(self):
         try:
@@ -140,7 +188,8 @@ class ReportsWidget(QWidget):
                 f"Excel export is not available because '{exc.name}' is missing."
             )
             return
-        self._start_export_thread(ExportVisitsThread(export_dir=self.dir_input.text()))
+        m, y = self._get_selected_date()
+        self._start_export_thread(ExportVisitsThread(export_dir=self.dir_input.text(), target_month=m, target_year=y))
 
     def _export_inventory(self):
         try:
@@ -152,7 +201,8 @@ class ReportsWidget(QWidget):
                 f"Excel export is not available because '{exc.name}' is missing."
             )
             return
-        self._start_export_thread(ExportInventoryThread(export_dir=self.dir_input.text()))
+        m, y = self._get_selected_date()
+        self._start_export_thread(ExportInventoryThread(export_dir=self.dir_input.text(), target_month=m, target_year=y))
 
     def _export_all(self):
         try:
@@ -164,7 +214,18 @@ class ReportsWidget(QWidget):
                 f"Excel export is not available because '{exc.name}' is missing."
             )
             return
-        self._start_export_thread(ExportAllDataThread(export_dir=self.dir_input.text()))
+        m, y = self._get_selected_date()
+        self._start_export_thread(ExportAllDataThread(export_dir=self.dir_input.text(), target_month=m, target_year=y))
+
+    def _export_analytics(self):
+        try:
+            from exports.excel_exporter_threaded import ExportAnalyticsThread
+        except ModuleNotFoundError as exc:
+            QMessageBox.warning(self, "Export Unavailable", "Missing module.")
+            return
+        m, y = self._get_selected_date()
+        self._start_export_thread(ExportAnalyticsThread(export_dir=self.dir_input.text(), target_month=m, target_year=y))
+
 
     def _on_progress(self, val: int, msg: str):
         self.progress_bar.setValue(val)

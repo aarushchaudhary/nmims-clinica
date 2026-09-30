@@ -183,7 +183,7 @@ def search_medicines(
         threshold = _expiry_threshold(expiring_in_months)
         conditions.append("m.expiry_date >= ? AND m.expiry_date <= ?")
         params.extend([_today_str(), threshold])
-
+        
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
     sql = f"""
@@ -621,6 +621,8 @@ def get_inventory_stats() -> dict:
 def get_medicines_for_export(
     expired_only: bool = False,
     expiring_in_months: int = None,
+    date_from: str = None,
+    date_to: str = None
 ) -> list[dict]:
     """
     Full medicine data for Excel export.
@@ -637,6 +639,13 @@ def get_medicines_for_export(
         threshold = _expiry_threshold(expiring_in_months)
         conditions.append("m.expiry_date >= ? AND m.expiry_date <= ?")
         params.extend([_today_str(), threshold])
+        
+    if date_from:
+        conditions.append("SUBSTR(m.created_at, 1, 10) >= ?")
+        params.append(date_from)
+    if date_to:
+        conditions.append("SUBSTR(m.created_at, 1, 10) <= ?")
+        params.append(date_to)
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
