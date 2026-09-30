@@ -42,5 +42,6 @@ build/
 
 # PyInstaller spec files
 nmims clinica.spec
+NMIMS Clinica.spec
 
 .vscode/
